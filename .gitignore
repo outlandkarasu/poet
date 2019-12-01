@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/poet
+poet.so
+poet.dylib
+poet.dll
+poet.a
+poet.lib
+poet-test-*
+*.exe
+*.o
+*.obj
+*.lst
+*.swp

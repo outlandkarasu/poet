@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"outland.karasu@gmail.com"
+	],
+	"description": "A poet.",
+	"license": "BSL-1.0",
+        "dflags": ["-preview=dip25", "-preview=dip1000", "-preview=dip1008"],
+	"name": "poet"
+}
