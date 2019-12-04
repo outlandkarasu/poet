@@ -3,5 +3,6 @@ Poet root module.
 */
 module poet;
 
-import poet.type;
+public import poet.fun;
+public import poet.type;
 
