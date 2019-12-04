@@ -68,14 +68,19 @@ private:
 Create function type.
 
 Params:
-    argument = argument type.
-    result = result type.
+    a = argument type.
+    b = argument or result type.
+    types = arguments and result.
 Returns:
     new function type.
 */
-Function fun(Type argument, Type result) nothrow pure
+Function fun(Type a, Type b, scope Type[] types ...) nothrow pure
+in (a !is null)
+in (b !is null)
+out (r; r !is null)
 {
-    return new Function(argument, result);
+    immutable r = (types.length == 0) ? b : fun(b, types[0], types[1 .. $]);
+    return new Function(a, r);
 }
 
 ///
@@ -97,6 +102,33 @@ nothrow pure unittest
     assert(!f.equals(t));
     assert(!f.equals(u));
 }
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+
+    immutable a = example();
+    immutable b = example();
+    immutable c = example();
+    immutable r = example();
+
+    immutable f1 = fun(a, b);
+    assert(f1.argument.equals(a));
+    assert(f1.result.equals(b));
+    assert(f1.equals(fun(a, b)));
+
+    immutable f2 = fun(a, b, c);
+    assert(f2.argument.equals(a));
+    assert(f2.result.equals(fun(b, c)));
+    assert(f2.equals(fun(a, b, c)));
+
+    immutable f3 = fun(a, b, c, r);
+    assert(f3.argument.equals(a));
+    assert(f3.result.equals(fun(b, c, r)));
+    assert(f3.equals(fun(a, b, c, r)));
+}
+
 
 /**
 Immutable function.
