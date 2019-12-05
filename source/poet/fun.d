@@ -10,7 +10,7 @@ import poet.type : IType, Type;
 /**
 Function type.
 */
-final immutable class CFunction : IType
+final immutable class CFunctionType : IType
 {
     @property @nogc nothrow pure scope
     {
@@ -37,7 +37,7 @@ final immutable class CFunction : IType
 
     override bool equals(scope Type other) @nogc nothrow pure scope
     {
-        auto otherFunction = cast(Function) other;
+        auto otherFunction = cast(FunctionType) other;
         if (otherFunction)
         {
             return argument_.equals(otherFunction.argument_)
@@ -74,13 +74,13 @@ Params:
 Returns:
     new function type.
 */
-Function fun(Type a, Type b, scope Type[] types ...) nothrow pure
+FunctionType funType(Type a, Type b, scope Type[] types ...) nothrow pure
 in (a !is null)
 in (b !is null)
 out (r; r !is null)
 {
-    immutable r = (types.length == 0) ? b : fun(b, types[0], types[1 .. $]);
-    return new Function(a, r);
+    immutable r = (types.length == 0) ? b : funType(b, types[0], types[1 .. $]);
+    return new FunctionType(a, r);
 }
 
 ///
@@ -90,13 +90,13 @@ nothrow pure unittest
 
     immutable t = example();
     immutable u = example();
-    immutable f = fun(t, u);
+    immutable f = funType(t, u);
 
     assert(f.argument.equals(t));
     assert(f.result.equals(u));
 
     assert(f.equals(f));
-    assert(f.equals(fun(t, u)));
+    assert(f.equals(funType(t, u)));
 
     assert(!f.equals(null));
     assert(!f.equals(t));
@@ -113,25 +113,25 @@ nothrow pure unittest
     immutable c = example();
     immutable r = example();
 
-    immutable f1 = fun(a, b);
+    immutable f1 = funType(a, b);
     assert(f1.argument.equals(a));
     assert(f1.result.equals(b));
-    assert(f1.equals(fun(a, b)));
+    assert(f1.equals(funType(a, b)));
 
-    immutable f2 = fun(a, b, c);
+    immutable f2 = funType(a, b, c);
     assert(f2.argument.equals(a));
-    assert(f2.result.equals(fun(b, c)));
-    assert(f2.equals(fun(a, b, c)));
+    assert(f2.result.equals(funType(b, c)));
+    assert(f2.equals(funType(a, b, c)));
 
-    immutable f3 = fun(a, b, c, r);
+    immutable f3 = funType(a, b, c, r);
     assert(f3.argument.equals(a));
-    assert(f3.result.equals(fun(b, c, r)));
-    assert(f3.equals(fun(a, b, c, r)));
+    assert(f3.result.equals(funType(b, c, r)));
+    assert(f3.equals(funType(a, b, c, r)));
 }
 
 
 /**
-Immutable function.
+Immutable function type.
 */
-alias Function = immutable(CFunction);
+alias FunctionType = immutable(CFunctionType);
 
