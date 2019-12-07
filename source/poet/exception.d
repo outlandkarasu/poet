@@ -7,6 +7,9 @@ import std.exception : basicExceptionCtors;
 
 @safe:
 
+/**
+Poet base exception.
+*/
 class PoetException : Exception
 {
     ///
