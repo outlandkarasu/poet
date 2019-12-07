@@ -109,7 +109,13 @@ nothrow pure unittest
 ///
 nothrow pure unittest
 {
+    import std.range : isForwardRange;
+
     auto r = list(1).append(2).append(3).range;
+    static assert(isForwardRange!(typeof(r)));
+
+    auto saved = r.save;
+
     assert(!r.empty && r.front == 3);
     r.popFront();
     assert(!r.empty && r.front == 2);
@@ -117,6 +123,11 @@ nothrow pure unittest
     assert(!r.empty && r.front == 1);
     r.popFront();
     assert(r.empty);
+
+    import std.algorithm : find;
+    assert(saved.find!"a == 2".front == 2);
+    assert(saved.find!"a == 1".front == 1);
+    assert(saved.find!"a == 999".empty);
 }
 
 
@@ -155,6 +166,15 @@ struct ListRange(T)
         bool empty()
         {
             return current_ is null;
+        }
+
+        /**
+        Returns:
+            saved range.
+        */
+        ListRange!T save()
+        {
+            return ListRange!T(current_);
         }
     }
 
