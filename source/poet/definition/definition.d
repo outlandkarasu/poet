@@ -217,6 +217,49 @@ pure unittest
     });
 }
 
+///
+pure unittest
+{
+    import poet.example : example;
+    import poet.fun : funType;
+
+    auto t = example();
+    auto u = example();
+    auto v = example();
+    auto f = funType(funType(t, u), funType(u, v), funType(t, v));
+
+    import std.exception : assertThrown;
+
+    assertThrown!NotFunctionTypeException(
+        define(f, (scope d, a) {
+            d.begin(); // (u -> v) -> (t -> v)
+            d.begin(); // t -> v
+            return d.begin(); // error
+        }));
+
+    assertThrown!UnmatchTypeException(
+        define(f, (scope d, a) {
+            auto argumentUtoV = d.begin();
+            auto argumentT = d.begin();
+            auto resultU = d.apply(a, argumentT);
+            auto resultV = d.apply(argumentUtoV, resultU);
+            auto resultTtoV = d.end(resultU); // error
+            auto resultUtoV_TtoV = d.end(resultTtoV);
+            return resultUtoV_TtoV;
+        }));
+
+    assertThrown!OutOfScopeException(
+        define(f, (scope d, a) {
+            auto argumentUtoV = d.begin();
+            auto argumentT = d.begin();
+            auto resultU = d.apply(a, argumentT);
+            auto resultV = d.apply(argumentUtoV, resultU);
+            auto resultTtoV = d.end(resultV);
+            auto resultUtoV_TtoV = d.end(resultV); // error
+            return resultUtoV_TtoV;
+        }));
+}
+
 private:
 
 /**
