@@ -8,10 +8,20 @@ import std.exception : basicExceptionCtors;
 import poet.exception : PoetException;
 
 @safe:
+
+/**
+definition exception.
+*/
+class DefinitionException : PoetException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
 /**
 Variable out of scope exception.
 */
-class OutOfScopeException : PoetException
+class OutOfScopeException : DefinitionException
 {
     ///
     mixin basicExceptionCtors;
@@ -20,7 +30,7 @@ class OutOfScopeException : PoetException
 /**
 Variable index not found exception.
 */
-class VariableIndexNotFoundException : PoetException
+class VariableIndexNotFoundException : DefinitionException
 {
     ///
     mixin basicExceptionCtors;
@@ -29,7 +39,7 @@ class VariableIndexNotFoundException : PoetException
 /**
 Function not started exception.
 */
-class FunctionNotStartedException : PoetException
+class FunctionNotStartedException : DefinitionException
 {
     ///
     mixin basicExceptionCtors;
@@ -38,7 +48,7 @@ class FunctionNotStartedException : PoetException
 /**
 Unmatch type exception.
 */
-class UnmatchTypeException : PoetException
+class UnmatchTypeException : DefinitionException
 {
     ///
     mixin basicExceptionCtors;
@@ -47,7 +57,7 @@ class UnmatchTypeException : PoetException
 /**
 Not function type exception.
 */
-class NotFunctionTypeException : PoetException
+class NotFunctionTypeException : DefinitionException
 {
     ///
     mixin basicExceptionCtors;
