@@ -3,6 +3,8 @@ Immutable list module.
 */
 module poet.list;
 
+import std.typecons : Rebindable;
+
 @safe:
 
 /**
@@ -41,6 +43,15 @@ immutable final class CList(T)
         {
             return tail_ is null;
         }
+    }
+
+    /**
+    Returns:
+        list range.
+    */
+    @property ListRange!T range() @nogc nothrow pure
+    {
+        return ListRange!T(this);
     }
 
     /**
@@ -95,6 +106,31 @@ nothrow pure unittest
     assert(!l2.end);
 }
 
+///
+nothrow pure unittest
+{
+    import std.range : isForwardRange;
+
+    auto r = list(1).append(2).append(3).range;
+    static assert(isForwardRange!(typeof(r)));
+
+    auto saved = r.save;
+
+    assert(!r.empty && r.front == 3);
+    r.popFront();
+    assert(!r.empty && r.front == 2);
+    r.popFront();
+    assert(!r.empty && r.front == 1);
+    r.popFront();
+    assert(r.empty);
+
+    import std.algorithm : find;
+    assert(saved.find!"a == 2".front == 2);
+    assert(saved.find!"a == 1".front == 1);
+    assert(saved.find!"a == 999".empty);
+}
+
+
 /**
 Immutable list.
 
@@ -102,4 +138,61 @@ Params:
     T = item type.
 */
 alias List(T) = immutable(CList!T);
+
+/**
+List forward range.
+
+Params:
+    T = item type.
+*/
+struct ListRange(T)
+{
+    @property @nogc nothrow pure const scope
+    {
+        /**
+        Returns:
+            current item.
+        */
+        ref immutable(T) front()
+        in (!empty)
+        {
+            return current_.head;
+        }
+
+        /**
+        Returns:
+            current item.
+        */
+        bool empty()
+        {
+            return current_ is null;
+        }
+
+        /**
+        Returns:
+            saved range.
+        */
+        ListRange!T save()
+        {
+            return ListRange!T(current_);
+        }
+    }
+
+    /**
+    Pop current item.
+    */
+    void popFront() @nogc nothrow pure scope
+    in (!empty)
+    {
+        current_ = current_.tail;
+    }
+
+private:
+    Rebindable!(immutable(CList!T)) current_;
+
+    this(immutable(CList!T) list) @nogc nothrow pure scope
+    {
+        this.current_ = list;
+    }
+}
 
