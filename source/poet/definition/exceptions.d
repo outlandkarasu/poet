@@ -63,3 +63,12 @@ class NotFunctionTypeException : DefinitionException
     mixin basicExceptionCtors;
 }
 
+/**
+Imcomplete definition exception.
+*/
+class ImcompleteDefinitionException : DefinitionException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+

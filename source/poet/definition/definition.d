@@ -13,6 +13,7 @@ import poet.utils : List, list;
 
 import poet.definition.exceptions :
     FunctionNotStartedException,
+    ImcompleteDefinitionException,
     NotFunctionTypeException,
     OutOfScopeException,
     UnmatchTypeException,
@@ -174,6 +175,7 @@ in (def !is null)
     scope d = new Definition(target);
     auto result = def(d, Variable(d.variables_.head.currentScope.id, VariableIndex(0)));
     enforce!UnmatchTypeException(d.getType(result).equals(target.result));
+    enforce!ImcompleteDefinitionException(d.currentScope.before is null);
 }
 
 ///
@@ -236,15 +238,6 @@ final immutable class CScope
     Current scope before position.
     */
     List!VariableEntry before;
-
-    /**
-    Returns:
-        true if root scope.
-    */
-    @property bool root() @nogc nothrow pure scope
-    {
-        return before is null;
-    }
 
     /**
     Constructor.
