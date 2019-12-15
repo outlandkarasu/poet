@@ -160,6 +160,22 @@ private:
     }
 }
 
+/**
+define function.
+
+Params:
+    target = target function type.
+    def = define delegate.
+*/
+void define(FunctionType target, scope Variable delegate(scope Definition, const(Variable)) @safe pure def) pure
+in (target !is null)
+in (def !is null)
+{
+    scope d = new Definition(target);
+    auto result = def(d, Variable(d.variables_.head.currentScope.id, VariableIndex(0)));
+    enforce!UnmatchTypeException(d.getType(result).equals(target.result));
+}
+
 ///
 pure unittest
 {
@@ -168,22 +184,35 @@ pure unittest
 
     auto t = example();
     auto u = example();
-    auto id = funType(t, t);
-    auto f = funType(u, id);
+    auto v = example();
+    auto f = funType(funType(t, u), funType(u, v), funType(t, v));
 
-    auto definition = new Definition(f);
-    assert(definition.variables_.head.type.equals(u));
-    assert(definition.variables_.head.currentScope.target.equals(f));
+    // (t -> u) -> (u -> v) -> (t -> v)
+    define(f, (scope d, a) {
+        assert(d.getType(a).equals(funType(t, u)));
 
-    auto argumentVariable = definition.begin();
-    assert(definition.getType(argumentVariable).equals(t));
-    assert(definition.variables_.head.type.equals(t));
-    assert(definition.variables_.head.currentScope.target.equals(id));
+        // (u -> v) -> (t -> v)
+        auto argumentUtoV = d.begin();
+        assert(d.getType(argumentUtoV).equals(funType(u, v)));
 
-    auto resultVariable = definition.end(argumentVariable);
-    assert(definition.getType(resultVariable).equals(id));
-    assert(definition.variables_.head.type.equals(id));
-    assert(definition.variables_.head.currentScope.target.equals(f));
+        // t -> v
+        auto argumentT = d.begin();
+        assert(d.getType(argumentT).equals(t));
+
+        auto resultU = d.apply(a, argumentT);
+        assert(d.getType(resultU).equals(u));
+
+        auto resultV = d.apply(argumentUtoV, resultU);
+        assert(d.getType(resultV).equals(v));
+
+        auto resultTtoV = d.end(resultV);
+        assert(d.getType(resultTtoV).equals(funType(t, v)));
+
+        auto resultUtoV_TtoV = d.end(resultTtoV);
+        assert(d.getType(resultUtoV_TtoV).equals(funType(funType(u, v), funType(t, v))));
+
+        return resultUtoV_TtoV;
+    });
 }
 
 private:
