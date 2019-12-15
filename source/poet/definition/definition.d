@@ -61,9 +61,9 @@ final class Definition
     out (r; getType(r))
     {
         immutable functionType = enforce!NotFunctionTypeException(
-                cast(FunctionType) variables_.head.currentScope.target.result);
+            cast(FunctionType) currentScope.target.result);
 
-        auto newScopeID = ScopeID(cast(size_t) lastScopeID_ + 1);
+        auto newScopeID = ScopeID(lastScopeID_ + 1);
         immutable newScope = new Scope(newScopeID, functionType, variables_);
         immutable index = VariableIndex(0);
         variables_ = list(VariableEntry(newScope, index, functionType.argument));
@@ -72,8 +72,28 @@ final class Definition
     }
 
     /**
+    Apply function.
+
+    Params:
+        f = function variable.
+        a = function argument variable.
+    Returns:
+        function result variable.
+    */
+    Variable apply(const(Variable) f, const(Variable) a) pure scope
+    out (r; getType(r).equals((cast(FunctionType) getType(f)).result))
+    {
+        immutable functionType = enforce!NotFunctionTypeException(cast(FunctionType) getType(f));
+        immutable argumentType = getType(a);
+        enforce!UnmatchTypeException(functionType.argument.equals(argumentType));
+        return pushVariable(functionType.result);
+    }
+
+    /**
     End function definition.
 
+    Params:
+        result = result variable.
     Returns:
         defined function type.
     */
@@ -81,20 +101,14 @@ final class Definition
     out (r; getType(r))
     {
         immutable resultType = getType(result);
-        immutable currentScope = variables_.head.currentScope;
         immutable targetType = currentScope.target;
         enforce!UnmatchTypeException(resultType.equals(targetType.result));
 
         immutable before = currentScope.before;
         enforce!FunctionNotStartedException(before);
 
-        immutable returnTop = before.head;
-        immutable returnScope = returnTop.currentScope;
-        immutable resultIndex = VariableIndex(returnTop.index + 1);
-        immutable resultEntry = VariableEntry(returnScope, resultIndex, targetType);
-        variables_ = before.append(resultEntry);
-
-        return Variable(returnScope.id, resultIndex);
+        variables_ = before;
+        return pushVariable(targetType);
     }
 
 private:
@@ -107,6 +121,20 @@ private:
     {
         immutable firstScope = new Scope(lastScopeID_, target, null);
         this.variables_ = list(VariableEntry(firstScope, VariableIndex.init, target.argument));
+    }
+
+    @property Scope currentScope() const @nogc nothrow pure scope
+    out (r; r !is null)
+    {
+        return variables_.head.currentScope;
+    }
+
+    Variable pushVariable(Type variableType) nothrow pure scope
+    out (r; getType(r).equals(variableType))
+    {
+        immutable index = VariableIndex(variables_.head.index + 1);
+        variables_ = variables_.append(VariableEntry(currentScope, index, variableType));
+        return Variable(currentScope.id, index);
     }
 
     Type getType(scope ref const(Variable) v) const pure scope
