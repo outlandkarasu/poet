@@ -148,6 +148,15 @@ final class Context(SV, V)
         return variables_.head.currentScope.value;
     }
 
+    /**
+    Returns:
+        current scope is root.
+    */
+    @property bool root() const @nogc nothrow pure scope
+    {
+        return variables_.tail is null;
+    }
+
 private:
 
     alias Scope = immutable(CScope!(SV, V));
@@ -172,17 +181,20 @@ pure unittest
 
     alias Ctx = Context!(string, int);
     auto context = new Ctx("first scope", 123);
+    assert(context.scopeValue == "first scope");
+    assert(context.root);
 
     // get first variable.
     auto v1 = Ctx.Variable.init;
-    assert(context.scopeValue == "first scope");
     assert(context.getValue(v1) == 123);
+    assert(context.root);
 
     // push second variable.
     auto v2 = context.push(223);
     assert(v2.scopeID == 0);
     assert(v2.index == 1);
     assert(context.getValue(v2) == 223);
+    assert(!context.root);
 
     // push new scope.
     auto v3 = context.pushScope("second scope", 1234);
