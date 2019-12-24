@@ -152,9 +152,9 @@ final class Context(SV, V)
     Returns:
         current scope is root.
     */
-    @property bool root() const @nogc nothrow pure scope
+    @property bool rootScope() const @nogc nothrow pure scope
     {
-        return variables_.tail is null;
+        return variables_.head.currentScope.before is null;
     }
 
 private:
@@ -182,19 +182,19 @@ pure unittest
     alias Ctx = Context!(string, int);
     auto context = new Ctx("first scope", 123);
     assert(context.scopeValue == "first scope");
-    assert(context.root);
+    assert(context.rootScope);
 
     // get first variable.
     auto v1 = Ctx.Variable.init;
     assert(context.getValue(v1) == 123);
-    assert(context.root);
+    assert(context.rootScope);
 
     // push second variable.
     auto v2 = context.push(223);
     assert(v2.scopeID == 0);
     assert(v2.index == 1);
     assert(context.getValue(v2) == 223);
-    assert(!context.root);
+    assert(context.rootScope);
 
     // push new scope.
     auto v3 = context.pushScope("second scope", 1234);
@@ -202,6 +202,7 @@ pure unittest
     assert(v3.index == 0);
     assert(context.scopeValue == "second scope");
     assert(context.getValue(v3) == 1234);
+    assert(!context.rootScope);
 
     // get pushed variables.
     assert(context.getValue(v1) == 123);
@@ -212,6 +213,7 @@ pure unittest
     assert(context.getValue(v1) == 123);
     assert(context.getValue(v2) == 223);
     assertThrown!OutOfScopeException(context.getValue(v3));
+    assert(context.rootScope);
 
     auto v4 = context.push(333);
     assert(context.getValue(v1) == 123);
@@ -225,6 +227,7 @@ pure unittest
     assert(context.getValue(v4) == 333);
     assert(context.getValue(v5) == 12345);
     assert(context.scopeValue == "third scope");
+    assert(!context.rootScope);
 }
 
 private:
