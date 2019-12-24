@@ -44,6 +44,8 @@ final class Context(SV, V)
     */
     struct Variable
     {
+    private:
+
         /**
         Variable scope ID;
         */
@@ -74,12 +76,17 @@ final class Context(SV, V)
     Params:
         scopeValue = first scope value.
         value = first variable value.
+    Returns:
+        first variable.
     */
-    void pushScope(SV scopeValue, V value) nothrow pure scope
+    Variable pushScope(SV scopeValue, V value) nothrow pure scope
     {
-        auto s = new Scope(ScopeID(lastScopeID_ + 1), scopeValue, variables_);
-        variables_ = list(Entry(s, VariableIndex.init, value));
-        lastScopeID_ = cast(size_t) s.id;
+        auto sid = ScopeID(lastScopeID_ + 1);
+        auto index = VariableIndex.init;
+        immutable s = new Scope(sid, scopeValue, variables_);
+        variables_ = variables_.append(Entry(s, index, value));
+        lastScopeID_ = sid;
+        return Variable(sid, index);
     }
 
     /**
@@ -98,11 +105,16 @@ final class Context(SV, V)
     Params:
         scopeValue = first scope value.
         value = first variable value.
+    Returns:
+        pushed variable.
     */
-    void push(V value) nothrow pure scope
+    Variable push(V value) nothrow pure scope
     {
         immutable head = variables_.head;
-        variables_ = list(Entry(head.currentScope, VariableIndex(head.index + 1), value));
+        immutable s = head.currentScope;
+        immutable index = VariableIndex(head.index + 1);
+        variables_ = variables_.append(Entry(s, index, value));
+        return Variable(s.id, index);
     }
 
     /**
@@ -156,26 +168,57 @@ private:
 ///
 pure unittest
 {
+    import std.exception : assertThrown;
+
     alias Ctx = Context!(string, int);
     auto context = new Ctx("first scope", 123);
-    auto v1 = Ctx.Variable(ScopeID(0), VariableIndex(0));
+
+    // get first variable.
+    auto v1 = Ctx.Variable.init;
     assert(context.scopeValue == "first scope");
     assert(context.getValue(v1) == 123);
 
-    context.push(223);
-    auto v2 = Ctx.Variable(ScopeID(0), VariableIndex(1));
+    // push second variable.
+    auto v2 = context.push(223);
+    assert(v2.scopeID == 0);
+    assert(v2.index == 1);
     assert(context.getValue(v2) == 223);
 
-    context.pushScope("second scope", 1234);
-    auto v3 = Ctx.Variable(ScopeID(1), VariableIndex(0));
+    // push new scope.
+    auto v3 = context.pushScope("second scope", 1234);
+    assert(v3.scopeID == 1);
+    assert(v3.index == 0);
     assert(context.scopeValue == "second scope");
     assert(context.getValue(v3) == 1234);
+
+    // get pushed variables.
+    assert(context.getValue(v1) == 123);
+    assert(context.getValue(v2) == 223);
+
+    // pop scope.
+    context.popScope();
+    assert(context.getValue(v1) == 123);
+    assert(context.getValue(v2) == 223);
+    assertThrown!OutOfScopeException(context.getValue(v3));
+
+    auto v4 = context.push(333);
+    assert(context.getValue(v1) == 123);
+    assert(context.getValue(v2) == 223);
+    assert(context.getValue(v4) == 333);
+
+    auto v5 = context.pushScope("third scope", 12345);
+    assert(context.getValue(v1) == 123);
+    assert(context.getValue(v2) == 223);
+    assertThrown!OutOfScopeException(context.getValue(v3));
+    assert(context.getValue(v4) == 333);
+    assert(context.getValue(v5) == 12345);
+    assert(context.scopeValue == "third scope");
 }
 
 private:
 
-alias ScopeID = Typedef!(size_t, size_t.init, "ScopeID");
-alias VariableIndex = Typedef!(size_t, size_t.init, "VariableIndex");
+alias ScopeID = Typedef!(size_t, 0, "ScopeID");
+alias VariableIndex = Typedef!(size_t, 0, "VariableIndex");
 
 final immutable class CScope(SV, V)
 {
