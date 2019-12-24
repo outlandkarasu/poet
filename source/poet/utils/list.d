@@ -116,13 +116,13 @@ nothrow pure unittest
 
     auto saved = r.save;
 
-    assert(!r.empty && r.front == 3);
+    assert(!r.empty && r.front == 3 && r.list && r.list.head == 3);
     r.popFront();
-    assert(!r.empty && r.front == 2);
+    assert(!r.empty && r.front == 2 && r.list && r.list.head == 2);
     r.popFront();
-    assert(!r.empty && r.front == 1);
+    assert(!r.empty && r.front == 1 && r.list && r.list.head == 1);
     r.popFront();
-    assert(r.empty);
+    assert(r.empty && r.list is null);
 
     import std.algorithm : find;
     assert(saved.find!"a == 2".front == 2);
@@ -175,6 +175,15 @@ struct ListRange(T)
         ListRange!T save()
         {
             return ListRange!T(current_);
+        }
+
+        /**
+        Returns:
+            current list.
+        */
+        immutable(CList!T) list()
+        {
+            return current_;
         }
     }
 
