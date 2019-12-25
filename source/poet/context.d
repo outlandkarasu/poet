@@ -13,24 +13,6 @@ import poet.list : List, list;
 @safe:
 
 /**
-Variable out of scope exception.
-*/
-class OutOfScopeException : PoetException
-{
-    ///
-    mixin basicExceptionCtors;
-}
-
-/**
-Variable index not found exception.
-*/
-class VariableIndexNotFoundException : PoetException
-{
-    ///
-    mixin basicExceptionCtors;
-}
-
-/**
 Generic context.
 
 Params:
@@ -93,10 +75,10 @@ final class Context(SV, V)
     pop current scope.
     */
     void popScope() pure scope
+    out (; variables_ !is null)
     {
-        immutable head = variables_.head;
-        enforce!OutOfScopeException(head.currentScope.before !is null);
-        variables_ = head.currentScope.before;
+        enforce!ScopeNotStartedException(!rootScope);
+        variables_ = variables_.head.currentScope.before;
     }
 
     /**
@@ -183,6 +165,7 @@ pure unittest
     auto context = new Ctx("first scope", 123);
     assert(context.scopeValue == "first scope");
     assert(context.rootScope);
+    assertThrown!ScopeNotStartedException(context.popScope());
 
     // get first variable.
     auto v1 = Ctx.Variable.init;
@@ -228,6 +211,42 @@ pure unittest
     assert(context.getValue(v5) == 12345);
     assert(context.scopeValue == "third scope");
     assert(!context.rootScope);
+}
+
+/**
+Context exception.
+*/
+class ContextException : PoetException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Variable out of scope exception.
+*/
+class OutOfScopeException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Variable index not found exception.
+*/
+class VariableIndexNotFoundException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+scope not started exception.
+*/
+class ScopeNotStartedException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
 }
 
 private:
