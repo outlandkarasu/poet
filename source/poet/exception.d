@@ -16,3 +16,12 @@ class PoetException : Exception
     mixin basicExceptionCtors;
 }
 
+/**
+Unmatch type exception.
+*/
+class UnmatchTypeException : PoetException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+

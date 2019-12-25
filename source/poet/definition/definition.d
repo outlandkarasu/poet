@@ -6,14 +6,13 @@ module poet.definition.definition;
 import std.exception : enforce;
 
 import poet.context : Context;
+import poet.exception : UnmatchTypeException;
 import poet.fun : FunctionType;
 import poet.type : Type;
 
 import poet.definition.exceptions :
-    FunctionNotStartedException,
     ImcompleteDefinitionException,
-    NotFunctionTypeException,
-    UnmatchTypeException;
+    NotFunctionTypeException;
 
 @safe:
 
@@ -77,7 +76,6 @@ final class Definition
         immutable resultType = getType(result);
         immutable targetType = context_.scopeValue;
         enforce!UnmatchTypeException(resultType.equals(targetType.result));
-        enforce!FunctionNotStartedException(!context_.rootScope);
 
         context_.popScope();
         return context_.push(targetType);

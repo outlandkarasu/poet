@@ -19,24 +19,6 @@ class DefinitionException : PoetException
 }
 
 /**
-Function not started exception.
-*/
-class FunctionNotStartedException : DefinitionException
-{
-    ///
-    mixin basicExceptionCtors;
-}
-
-/**
-Unmatch type exception.
-*/
-class UnmatchTypeException : DefinitionException
-{
-    ///
-    mixin basicExceptionCtors;
-}
-
-/**
 Not function type exception.
 */
 class NotFunctionTypeException : DefinitionException
