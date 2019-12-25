@@ -50,6 +50,16 @@ final class Context(SV, V)
     }
 
     /**
+    Context state save point.
+    */
+    struct SavePoint
+    {
+    private:
+        List!Entry variables;
+        ScopeID lastScopeID;
+    }
+
+    /**
     constructor.
 
     Params:
@@ -63,6 +73,39 @@ final class Context(SV, V)
     }
 
     /**
+    constructor by save point.
+
+    Params:
+        savePoint = save point.
+    */
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    {
+        this.variables_ = savePoint.variables;
+        this.lastScopeID_ = savePoint.lastScopeID;
+    }
+
+    /**
+    push new scope.
+
+    Params:
+        sid = new scope ID.
+        scopeValue = first scope value.
+        value = first variable value.
+    Returns:
+        first variable.
+    */
+    Variable pushScope(ScopeID sid, SV scopeValue, V value) nothrow pure scope
+    in (lastScopeID_ < sid)
+    {
+        auto index = VariableIndex.init;
+        immutable s = new Scope(sid, scopeValue, variables_);
+        variables_ = variables_.append(Entry(s, index, value));
+        lastScopeID_ = sid;
+        return Variable(sid, index);
+    }
+
+
+    /**
     push new scope.
 
     Params:
@@ -73,12 +116,7 @@ final class Context(SV, V)
     */
     Variable pushScope(SV scopeValue, V value) nothrow pure scope
     {
-        auto sid = ScopeID(lastScopeID_ + 1);
-        auto index = VariableIndex.init;
-        immutable s = new Scope(sid, scopeValue, variables_);
-        variables_ = variables_.append(Entry(s, index, value));
-        lastScopeID_ = sid;
-        return Variable(sid, index);
+        return pushScope(ScopeID(lastScopeID_ + 1), scopeValue, value);
     }
 
     /**
@@ -147,6 +185,15 @@ final class Context(SV, V)
     @property bool rootScope() const @nogc nothrow pure scope
     {
         return variables_.head.currentScope.before is null;
+    }
+
+    /**
+    Returns:
+        current save point.
+    */
+    SavePoint save() const @nogc nothrow pure scope
+    {
+        return SavePoint(variables_, lastScopeID_);
     }
 
 private:
@@ -221,6 +268,34 @@ pure unittest
     assert(context.getValue(v5) == 12345);
     assert(context.scopeValue == "third scope");
     assert(!context.rootScope);
+}
+
+///
+pure unittest
+{
+    import std.exception : assertThrown;
+
+    alias Ctx = Context!(string, int);
+    auto context = new Ctx("first scope", 123);
+    auto v1 = Ctx.Variable.init;
+    auto v2 = context.push(456);
+
+    auto saved = context.save();
+    auto v3 = context.push(789);
+
+    auto savedContext = new Ctx(saved);
+    auto v4 = savedContext.pushScope("second scope", 901);
+    assert(savedContext.getValue(v1) == 123);
+    assert(savedContext.getValue(v2) == 456);
+    assert(savedContext.getValue(v4) == 901);
+    assertThrown!VariableIndexNotFoundException(savedContext.getValue(v3));
+
+    auto v5 = context.pushScope(ScopeID(2), "third scope", 321);
+    assert(savedContext.getValue(v1) == 123);
+    assert(savedContext.getValue(v2) == 456);
+    assert(context.getValue(v3) == 789);
+    assertThrown!OutOfScopeException(context.getValue(v4));
+    assert(context.getValue(v5) == 321);
 }
 
 /**
