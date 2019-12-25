@@ -13,6 +13,16 @@ import poet.list : List, list;
 @safe:
 
 /**
+Context scope ID.
+*/
+alias ScopeID = Typedef!(size_t, 0, "ScopeID");
+
+/**
+Context variable index.
+*/
+alias VariableIndex = Typedef!(size_t, 0, "VariableIndex");
+
+/**
 Generic context.
 
 Params:
@@ -250,9 +260,6 @@ class ScopeNotStartedException : ContextException
 }
 
 private:
-
-alias ScopeID = Typedef!(size_t, 0, "ScopeID");
-alias VariableIndex = Typedef!(size_t, 0, "VariableIndex");
 
 final immutable class CScope(SV, V)
 {
