@@ -1,11 +1,11 @@
 /**
 Execution module.
 */
-module poet.execution.context;
+module poet.execution.execution;
 
 import std.exception : enforce;
 
-import poet.context : Context;
+import poet.context : Context, ScopeID;
 import poet.exception : UnmatchTypeException;
 import poet.fun : FunctionType;
 import poet.type : Type;
@@ -18,6 +18,9 @@ Execution context.
 */
 final class Execution 
 {
+    /**
+    Execution variable type.
+    */
     alias Variable = Ctx.Variable;
 
     /**
@@ -52,15 +55,16 @@ final class Execution
     push new scope.
 
     Params:
+        id = scope ID.
         resultType = result type.
         argument = function argument value.
     Returns:
         argument variable.
     */
-    Variable pushScope()(Type resultType, scope auto ref const(Variable) argument) pure scope
+    Variable pushScope()(ScopeID id, Type resultType, auto scope ref const(Variable) argument) pure scope
     in (resultType !is null)
     {
-        return context_.pushScope(resultType, get(argument));
+        return context_.pushScope(id, resultType, get(argument));
     }
 
     /**
@@ -119,7 +123,7 @@ pure unittest
     assert(execution.get(av2) is v2);
 
     // push new scope.
-    auto vv2 = execution.pushScope(t, av2);
+    auto vv2 = execution.pushScope(ScopeID(1), t, av2);
     assert(execution.get(vv1) is v1);
     assert(execution.get(vv2) is v2);
     assertThrown!UnmatchTypeException(execution.popScope(vv2));
