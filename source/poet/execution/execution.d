@@ -24,6 +24,11 @@ final class Execution
     alias Variable = Ctx.Variable;
 
     /**
+    save point.
+    */
+    alias SavePoint = Ctx.SavePoint;
+
+    /**
     push value.
 
     Params:
@@ -85,6 +90,29 @@ final class Execution
         return context_.push(resultValue);
     }
 
+    /**
+    Returns:
+        current save point.
+    */
+    SavePoint save() const @nogc nothrow pure scope
+    {
+        return context_.save();
+    }
+
+    /**
+    restore execution from a save point.
+
+    Params:
+        savePoint = save point.
+    Returns:
+        restored execution.
+    */
+    static Execution restore()(auto ref const(SavePoint) savePoint) nothrow pure
+    out (r; r !is null)
+    {
+        return new Execution(savePoint);
+    }
+
 private:
     alias Ctx = Context!(Type, Value);
 
@@ -97,6 +125,12 @@ private:
     {
         this.context_ = new Ctx(resultType, argument);
     }
+
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    out (r; context_ !is null)
+    {
+        this.context_ = new Ctx(savePoint);
+    }
 }
 
 ///
@@ -106,7 +140,8 @@ pure unittest
     import poet.example : example;
     import poet.context :
         ScopeNotStartedException,
-        OutOfScopeException;
+        OutOfScopeException,
+        VariableIndexNotFoundException;
 
     auto t = example();
     auto v1 = t.createValue();
@@ -122,6 +157,9 @@ pure unittest
     auto av2 = execution.push(v2);
     assert(execution.get(av2) is v2);
 
+    // save execution.
+    immutable savePoint = execution.save();
+
     // push new scope.
     auto vv2 = execution.pushScope(ScopeID(1), t, av2);
     assert(execution.get(vv1) is v1);
@@ -129,12 +167,19 @@ pure unittest
     assertThrown!UnmatchTypeException(execution.popScope(vv2));
 
     // pop scope.
-    auto v3 = execution.popScope(vv1);
+    auto vv3 = execution.popScope(vv1);
     assert(execution.get(vv1) is v1);
-    assert(execution.get(v3) is v1);
+    assert(execution.get(vv3) is v1);
     assertThrown!OutOfScopeException(execution.get(vv2));
 
     // cannot pop root scope.
     assertThrown!ScopeNotStartedException(execution.popScope(vv1));
+
+    // restore save point.
+    auto restored = Execution.restore(savePoint);
+    assert(restored.get(vv1) is v1);
+    assert(restored.get(av2) is v2);
+    assertThrown!OutOfScopeException(restored.get(vv2));
+    assertThrown!VariableIndexNotFoundException(restored.get(vv3));
 }
 
