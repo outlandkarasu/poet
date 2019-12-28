@@ -8,7 +8,11 @@ import std.typecons : Rebindable;
 
 import poet.context : Context;
 import poet.exception : UnmatchTypeException;
-import poet.execution : ApplyFunction, CreateFunction, Instruction;
+import poet.execution :
+    ApplyFunction,
+    CreateFunction,
+    Execution,
+    Instruction;
 import poet.fun : FunctionType;
 import poet.type : Type;
 import poet.utils : List;
@@ -62,7 +66,10 @@ final class Definition
         immutable argumentType = getType(a);
         enforce!UnmatchTypeException(functionType.argument.equals(argumentType));
 
-        auto resultElement = StackElement(functionType.result);
+        immutable applyInstruction = new ApplyFunction(
+                toExecutionVariable(f), toExecutionVariable(a));
+
+        auto resultElement = StackElement(functionType.result, applyInstruction);
         return context_.push(resultElement);
     }
 
@@ -80,6 +87,21 @@ final class Definition
         immutable resultType = getType(result);
         immutable targetType = context_.scopeValue;
         enforce!UnmatchTypeException(resultType.equals(targetType.result));
+
+        Instruction[] instructions;
+        foreach (e; context_)
+        {
+            if (e.instruction)
+            {
+                instructions ~= e.instruction;
+            }
+        }
+
+        immutable createFunctionInstruction = new CreateFunction(
+                targetType,
+                context_.scopeID,
+                instructions,
+                toExecutionVariable(result));
 
         context_.popScope();
 
@@ -110,6 +132,12 @@ private:
     out (r; r !is null)
     {
         return context_.getValue(v).type;
+    }
+
+    static Execution.Variable toExecutionVariable()(
+            auto scope ref const(Variable) v) @nogc nothrow pure
+    {
+        return Execution.Variable(v.scopeID, v.index);
     }
 }
 

@@ -36,8 +36,6 @@ final class Context(SV, V)
     */
     struct Variable
     {
-    private:
-
         /**
         Variable scope ID;
         */
@@ -196,10 +194,44 @@ final class Context(SV, V)
         return SavePoint(variables_, lastScopeID_);
     }
 
+    /**
+    Returns:
+        current scope ID.
+    */
+    ScopeID scopeID() const @nogc nothrow pure scope
+    {
+        return variables_.head.currentScope.id;
+    }
+
+    /**
+    Params:
+        dg = foreach delegate.
+    Returns:
+        loop result.
+    */
+    int opApply(scope int delegate(ref immutable(V)) nothrow pure @safe dg) nothrow pure scope
+    {
+        return opApplyReverseImpl(variables_, dg);
+    }
+
 private:
 
     alias Scope = immutable(CScope!(SV, V));
     alias Entry = immutable(VariableEntry!(SV, V));
+
+    int opApplyReverseImpl(scope List!Entry variables, scope int delegate(ref immutable(V)) nothrow pure @safe dg) nothrow pure scope
+    {
+        if (variables.tail && variables.tail.head.currentScope.id == scopeID)
+        {
+            auto tailResult = opApplyReverseImpl(variables.tail, dg);
+            if (tailResult)
+            {
+                return tailResult;
+            }
+        }
+
+        return dg(variables.head.value);
+    }
 
     List!Entry getScopeTop(ScopeID scopeID) const pure return scope
     out (r; r !is null)
@@ -297,6 +329,45 @@ pure unittest
     assertThrown!OutOfScopeException(context.getValue(v4));
     assert(context.getValue(v5) == 321);
 }
+
+///
+pure unittest
+{
+    alias Ctx = Context!(string, int);
+    auto context = new Ctx("first scope", 1);
+    context.push(2);
+    context.push(3);
+
+    int[] values;
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [1, 2, 3]);
+
+    context.pushScope("second scope", 100);
+    context.push(200);
+    context.push(300);
+
+    values = [];
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [100, 200, 300]);
+
+    context.popScope();
+    values = [];
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [1, 2, 3]);
+}
+
 
 /**
 Context exception.
