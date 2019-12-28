@@ -66,10 +66,10 @@ final class Execution
     Returns:
         argument variable.
     */
-    Variable pushScope()(ScopeID id, Type resultType, auto scope ref const(Variable) argument) pure scope
+    Variable pushScope(ScopeID id, Type resultType, Value argument) pure scope
     in (resultType !is null)
     {
-        return context_.pushScope(id, resultType, get(argument));
+        return context_.pushScope(id, resultType, argument);
     }
 
     /**
@@ -80,7 +80,7 @@ final class Execution
     Returns:
         result variable.
     */
-    Variable popScope()(scope auto ref const(Variable) result) pure scope
+    Variable popScope(Variable result) pure scope
     {
         immutable resultValue = get(result);
         immutable resultType = resultValue.type;
@@ -103,21 +103,21 @@ final class Execution
     restore execution from a save point.
 
     Params:
-        savePoint = save point.
-    Returns:
-        restored execution.
+        savePoint = restore save point.
     */
-    static Execution restore()(auto ref const(SavePoint) savePoint) nothrow pure
-    out (r; r !is null)
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    out (r; context_ !is null)
     {
-        return new Execution(savePoint);
+        this.context_ = new Ctx(savePoint);
     }
 
-private:
-    alias Ctx = Context!(Type, Value);
+    /**
+    create new execution.
 
-    Ctx context_;
-
+    Params:
+        resultType = execution result type.
+        argument = execution argument;
+    */
     this(Type resultType, Value argument) nothrow pure scope
     in (resultType !is null)
     in (argument !is null)
@@ -126,11 +126,9 @@ private:
         this.context_ = new Ctx(resultType, argument);
     }
 
-    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
-    out (r; context_ !is null)
-    {
-        this.context_ = new Ctx(savePoint);
-    }
+private:
+    alias Ctx = Context!(Type, Value);
+    Ctx context_;
 }
 
 ///
@@ -161,7 +159,7 @@ pure unittest
     immutable savePoint = execution.save();
 
     // push new scope.
-    auto vv2 = execution.pushScope(ScopeID(1), t, av2);
+    auto vv2 = execution.pushScope(ScopeID(1), t, v2);
     assert(execution.get(vv1) is v1);
     assert(execution.get(vv2) is v2);
     assertThrown!UnmatchTypeException(execution.popScope(vv2));
@@ -176,7 +174,7 @@ pure unittest
     assertThrown!ScopeNotStartedException(execution.popScope(vv1));
 
     // restore save point.
-    auto restored = Execution.restore(savePoint);
+    scope restored = new Execution(savePoint);
     assert(restored.get(vv1) is v1);
     assert(restored.get(av2) is v2);
     assertThrown!OutOfScopeException(restored.get(vv2));
