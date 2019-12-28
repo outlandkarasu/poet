@@ -3,7 +3,10 @@ Instruction module.
 */
 module poet.execution.instruction;
 
+import std.exception : enforce;
+
 import poet.context : ScopeID;
+import poet.exception : UnmatchTypeException;
 import poet.execution.execution : Execution;
 import poet.fun : FunctionType;
 import poet.utils : List;
@@ -37,6 +40,8 @@ final immutable class CApplyFunction : IInstruction
     in (false)
     {
         immutable f = cast(Function) e.get(f_);
+        enforce!UnmatchTypeException(f !is null);
+
         immutable a = e.get(a_);
         e.push(f.apply(a));
     }

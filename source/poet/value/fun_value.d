@@ -3,7 +3,10 @@ Function value module.
 */
 module poet.value.fun_value;
 
+import std.exception : enforce;
+
 import poet.context : ScopeID;
+import poet.exception : UnmatchTypeException;
 import poet.execution : CreateFunction, Execution, Instruction;
 import poet.fun : FunctionType;
 import poet.utils : List;
@@ -39,7 +42,11 @@ immutable class CFunction : Value
         apply result.
     */
     Value apply(Value argument) pure scope
+    in (argument !is null)
+    out (r; r !is null)
     {
+        enforce!UnmatchTypeException(type.argument.equals(argument.type));
+
         // start a new scope.
         scope execution = new Execution(startPoint_);
         execution.pushScope(createFunction_.scopeID, type.result, argument);
