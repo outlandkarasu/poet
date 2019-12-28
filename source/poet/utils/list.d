@@ -130,7 +130,6 @@ nothrow pure unittest
     assert(saved.find!"a == 999".empty);
 }
 
-
 /**
 Immutable list.
 

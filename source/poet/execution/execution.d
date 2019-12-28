@@ -1,11 +1,11 @@
 /**
 Execution module.
 */
-module poet.execution.context;
+module poet.execution.execution;
 
 import std.exception : enforce;
 
-import poet.context : Context;
+import poet.context : Context, ScopeID;
 import poet.exception : UnmatchTypeException;
 import poet.fun : FunctionType;
 import poet.type : Type;
@@ -18,7 +18,52 @@ Execution context.
 */
 final class Execution 
 {
+    /**
+    Execution variable type.
+    */
     alias Variable = Ctx.Variable;
+
+    /**
+    save point.
+    */
+    alias SavePoint = Ctx.SavePoint;
+
+    /**
+    Returns:
+        empty execution.
+    */
+    static Execution createEmpty() nothrow pure
+    out (r; r !is null)
+    {
+        return new Execution(ROOT_TYPE, ROOT_VALUE);
+    }
+
+    /**
+    restore execution from a save point.
+
+    Params:
+        savePoint = restore save point.
+    */
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    out (r; context_ !is null)
+    {
+        this.context_ = new Ctx(savePoint);
+    }
+
+    /**
+    create new execution.
+
+    Params:
+        resultType = execution result type.
+        argument = execution argument;
+    */
+    this(Type resultType, Value argument) nothrow pure scope
+    in (resultType !is null)
+    in (argument !is null)
+    out (r; context_ !is null)
+    {
+        this.context_ = new Ctx(resultType, argument);
+    }
 
     /**
     push value.
@@ -52,15 +97,16 @@ final class Execution
     push new scope.
 
     Params:
+        id = scope ID.
         resultType = result type.
         argument = function argument value.
     Returns:
         argument variable.
     */
-    Variable pushScope()(Type resultType, scope auto ref const(Variable) argument) pure scope
+    Variable pushScope(ScopeID id, Type resultType, Value argument) pure scope
     in (resultType !is null)
     {
-        return context_.pushScope(resultType, get(argument));
+        return context_.pushScope(id, resultType, argument);
     }
 
     /**
@@ -71,7 +117,7 @@ final class Execution
     Returns:
         result variable.
     */
-    Variable popScope()(scope auto ref const(Variable) result) pure scope
+    Variable popScope(Variable result) pure scope
     {
         immutable resultValue = get(result);
         immutable resultType = resultValue.type;
@@ -81,18 +127,23 @@ final class Execution
         return context_.push(resultValue);
     }
 
+    /**
+    Returns:
+        current save point.
+    */
+    SavePoint save() const @nogc nothrow pure scope
+    {
+        return context_.save();
+    }
+
+    @property Variable lastVariable() const @nogc nothrow pure scope
+    {
+        return context_.lastVariable;
+    }
+
 private:
     alias Ctx = Context!(Type, Value);
-
     Ctx context_;
-
-    this(Type resultType, Value argument) nothrow pure scope
-    in (resultType !is null)
-    in (argument !is null)
-    out (r; context_ !is null)
-    {
-        this.context_ = new Ctx(resultType, argument);
-    }
 }
 
 ///
@@ -102,7 +153,8 @@ pure unittest
     import poet.example : example;
     import poet.context :
         ScopeNotStartedException,
-        OutOfScopeException;
+        OutOfScopeException,
+        VariableIndexNotFoundException;
 
     auto t = example();
     auto v1 = t.createValue();
@@ -118,19 +170,51 @@ pure unittest
     auto av2 = execution.push(v2);
     assert(execution.get(av2) is v2);
 
+    // save execution.
+    immutable savePoint = execution.save();
+
     // push new scope.
-    auto vv2 = execution.pushScope(t, av2);
+    auto vv2 = execution.pushScope(ScopeID(1), t, v2);
     assert(execution.get(vv1) is v1);
     assert(execution.get(vv2) is v2);
     assertThrown!UnmatchTypeException(execution.popScope(vv2));
 
     // pop scope.
-    auto v3 = execution.popScope(vv1);
+    auto vv3 = execution.popScope(vv1);
     assert(execution.get(vv1) is v1);
-    assert(execution.get(v3) is v1);
+    assert(execution.get(vv3) is v1);
     assertThrown!OutOfScopeException(execution.get(vv2));
 
     // cannot pop root scope.
     assertThrown!ScopeNotStartedException(execution.popScope(vv1));
+
+    // restore save point.
+    scope restored = new Execution(savePoint);
+    assert(restored.get(vv1) is v1);
+    assert(restored.get(av2) is v2);
+    assertThrown!OutOfScopeException(restored.get(vv2));
+    assertThrown!VariableIndexNotFoundException(restored.get(vv3));
 }
+
+private:
+
+immutable class RootType : Type
+{
+    override bool equals(scope Type other) immutable @nogc nothrow pure scope
+    {
+        return other is this;
+    }
+}
+
+immutable ROOT_TYPE = new RootType();
+
+immutable class RootValue : Value
+{
+    override @property Type type() immutable @nogc nothrow pure scope
+    {
+        return ROOT_TYPE;
+    }
+}
+
+immutable ROOT_VALUE = new RootValue();
 

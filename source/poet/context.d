@@ -13,6 +13,16 @@ import poet.list : List, list;
 @safe:
 
 /**
+Context scope ID.
+*/
+alias ScopeID = Typedef!(size_t, 0, "ScopeID");
+
+/**
+Context variable index.
+*/
+alias VariableIndex = Typedef!(size_t, 0, "VariableIndex");
+
+/**
 Generic context.
 
 Params:
@@ -26,8 +36,6 @@ final class Context(SV, V)
     */
     struct Variable
     {
-    private:
-
         /**
         Variable scope ID;
         */
@@ -37,6 +45,16 @@ final class Context(SV, V)
         Variable index.
         */
         VariableIndex index;
+    }
+
+    /**
+    Context state save point.
+    */
+    struct SavePoint
+    {
+    private:
+        List!Entry variables;
+        ScopeID lastScopeID;
     }
 
     /**
@@ -53,6 +71,39 @@ final class Context(SV, V)
     }
 
     /**
+    constructor by save point.
+
+    Params:
+        savePoint = save point.
+    */
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    {
+        this.variables_ = savePoint.variables;
+        this.lastScopeID_ = savePoint.lastScopeID;
+    }
+
+    /**
+    push new scope.
+
+    Params:
+        sid = new scope ID.
+        scopeValue = first scope value.
+        value = first variable value.
+    Returns:
+        first variable.
+    */
+    Variable pushScope(ScopeID sid, SV scopeValue, V value) nothrow pure scope
+    in (lastScopeID_ < sid)
+    {
+        auto index = VariableIndex.init;
+        immutable s = new Scope(sid, scopeValue, variables_);
+        variables_ = variables_.append(Entry(s, index, value));
+        lastScopeID_ = sid;
+        return Variable(sid, index);
+    }
+
+
+    /**
     push new scope.
 
     Params:
@@ -63,12 +114,7 @@ final class Context(SV, V)
     */
     Variable pushScope(SV scopeValue, V value) nothrow pure scope
     {
-        auto sid = ScopeID(lastScopeID_ + 1);
-        auto index = VariableIndex.init;
-        immutable s = new Scope(sid, scopeValue, variables_);
-        variables_ = variables_.append(Entry(s, index, value));
-        lastScopeID_ = sid;
-        return Variable(sid, index);
+        return pushScope(ScopeID(lastScopeID_ + 1), scopeValue, value);
     }
 
     /**
@@ -139,10 +185,63 @@ final class Context(SV, V)
         return variables_.head.currentScope.before is null;
     }
 
+    /**
+    Returns:
+        current save point.
+    */
+    SavePoint save() const @nogc nothrow pure scope
+    {
+        return SavePoint(variables_, lastScopeID_);
+    }
+
+    /**
+    Returns:
+        current scope ID.
+    */
+    @property ScopeID scopeID() const @nogc nothrow pure scope
+    {
+        return variables_.head.currentScope.id;
+    }
+
+    /**
+    Returns:
+        last variable.
+    */
+    @property Variable lastVariable() const @nogc nothrow pure scope
+    {
+        immutable head = variables_.head;
+        return Variable(head.currentScope.id, head.index);
+    }
+
+    /**
+    Params:
+        dg = foreach delegate.
+    Returns:
+        loop result.
+    */
+    int opApply(scope int delegate(ref immutable(V)) nothrow pure @safe dg) nothrow pure scope
+    {
+        return opApplyReverseImpl(variables_, dg);
+    }
+
 private:
 
     alias Scope = immutable(CScope!(SV, V));
     alias Entry = immutable(VariableEntry!(SV, V));
+
+    int opApplyReverseImpl(scope List!Entry variables, scope int delegate(ref immutable(V)) nothrow pure @safe dg) nothrow pure scope
+    {
+        if (variables.tail && variables.tail.head.currentScope.id == scopeID)
+        {
+            auto tailResult = opApplyReverseImpl(variables.tail, dg);
+            if (tailResult)
+            {
+                return tailResult;
+            }
+        }
+
+        return dg(variables.head.value);
+    }
 
     List!Entry getScopeTop(ScopeID scopeID) const pure return scope
     out (r; r !is null)
@@ -213,6 +312,73 @@ pure unittest
     assert(!context.rootScope);
 }
 
+///
+pure unittest
+{
+    import std.exception : assertThrown;
+
+    alias Ctx = Context!(string, int);
+    auto context = new Ctx("first scope", 123);
+    auto v1 = Ctx.Variable.init;
+    auto v2 = context.push(456);
+
+    auto saved = context.save();
+    auto v3 = context.push(789);
+
+    auto savedContext = new Ctx(saved);
+    auto v4 = savedContext.pushScope("second scope", 901);
+    assert(savedContext.getValue(v1) == 123);
+    assert(savedContext.getValue(v2) == 456);
+    assert(savedContext.getValue(v4) == 901);
+    assertThrown!VariableIndexNotFoundException(savedContext.getValue(v3));
+
+    auto v5 = context.pushScope(ScopeID(2), "third scope", 321);
+    assert(savedContext.getValue(v1) == 123);
+    assert(savedContext.getValue(v2) == 456);
+    assert(context.getValue(v3) == 789);
+    assertThrown!OutOfScopeException(context.getValue(v4));
+    assert(context.getValue(v5) == 321);
+}
+
+///
+pure unittest
+{
+    alias Ctx = Context!(string, int);
+    auto context = new Ctx("first scope", 1);
+    context.push(2);
+    context.push(3);
+
+    int[] values;
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [1, 2, 3]);
+
+    context.pushScope("second scope", 100);
+    context.push(200);
+    context.push(300);
+
+    values = [];
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [100, 200, 300]);
+
+    context.popScope();
+    values = [];
+    foreach (v; context)
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [1, 2, 3]);
+}
+
+
 /**
 Context exception.
 */
@@ -250,9 +416,6 @@ class ScopeNotStartedException : ContextException
 }
 
 private:
-
-alias ScopeID = Typedef!(size_t, 0, "ScopeID");
-alias VariableIndex = Typedef!(size_t, 0, "VariableIndex");
 
 final immutable class CScope(SV, V)
 {

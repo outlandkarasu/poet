@@ -4,11 +4,19 @@ Function definition module.
 module poet.definition.definition;
 
 import std.exception : enforce;
+import std.typecons : Rebindable;
 
 import poet.context : Context;
 import poet.exception : UnmatchTypeException;
+import poet.execution :
+    ApplyFunction,
+    CreateFunction,
+    Execution,
+    Instruction;
 import poet.fun : FunctionType;
 import poet.type : Type;
+import poet.utils : List;
+import poet.value : Function;
 
 import poet.definition.exceptions :
     ImcompleteDefinitionException,
@@ -38,7 +46,7 @@ final class Definition
         immutable functionType = cast(FunctionType) context_.scopeValue.result;
         enforce!NotFunctionTypeException(functionType);
 
-        return context_.pushScope(functionType, functionType.argument);
+        return context_.pushScope(functionType, StackElement(functionType.argument));
     }
 
     /**
@@ -59,7 +67,11 @@ final class Definition
         immutable argumentType = getType(a);
         enforce!UnmatchTypeException(functionType.argument.equals(argumentType));
 
-        return context_.push(functionType.result);
+        immutable applyInstruction = new ApplyFunction(
+                toExecutionVariable(f), toExecutionVariable(a));
+
+        auto resultElement = StackElement(functionType.result, applyInstruction);
+        return context_.push(resultElement);
     }
 
     /**
@@ -73,16 +85,22 @@ final class Definition
     Variable end()(auto scope ref const(Variable) result) pure scope
     out (r; getType(r))
     {
-        immutable resultType = getType(result);
         immutable targetType = context_.scopeValue;
-        enforce!UnmatchTypeException(resultType.equals(targetType.result));
-
+        immutable currentFunction = createCurrentFunction(result);
         context_.popScope();
-        return context_.push(targetType);
+        auto resultElement = StackElement(targetType, currentFunction);
+        return context_.push(resultElement);
     }
 
 private:
-    alias Ctx = Context!(FunctionType, Type);
+
+    struct StackElement
+    {
+        Type type;
+        Instruction instruction;
+    }
+
+    alias Ctx = Context!(FunctionType, StackElement);
 
     Ctx context_;
 
@@ -90,13 +108,42 @@ private:
     in (target !is null)
     out (r; context_ !is null)
     {
-        this.context_ = new Ctx(target, target.argument);
+        this.context_ = new Ctx(target, StackElement(target.argument));
     }
 
     Type getType()(auto scope ref const(Variable) v) pure scope
     out (r; r !is null)
     {
-        return context_.getValue(v);
+        return context_.getValue(v).type;
+    }
+
+    static Execution.Variable toExecutionVariable()(
+            auto scope ref const(Variable) v) @nogc nothrow pure
+    {
+        return Execution.Variable(v.scopeID, v.index);
+    }
+
+    CreateFunction createCurrentFunction()(auto scope ref const(Variable) result) pure scope
+    out (r; r !is null)
+    {
+        immutable resultType = getType(result);
+        immutable targetType = context_.scopeValue;
+        enforce!UnmatchTypeException(resultType.equals(targetType.result));
+
+        Instruction[] instructions;
+        foreach (e; context_)
+        {
+            if (e.instruction)
+            {
+                instructions ~= e.instruction;
+            }
+        }
+
+        return new CreateFunction(
+                targetType,
+                context_.scopeID,
+                instructions,
+                toExecutionVariable(result));
     }
 }
 
@@ -106,17 +153,24 @@ define function.
 Params:
     target = target function type.
     def = define delegate.
+Returns:
+    defined function.
 */
-void define(
+Function define(
         FunctionType target,
         scope Definition.Variable delegate(scope Definition, const(Definition.Variable)) @safe pure def) pure
 in (target !is null)
 in (def !is null)
+out (r; r !is null)
 {
     scope d = new Definition(target);
     auto result = def(d, Definition.Variable.init);
-    enforce!UnmatchTypeException(d.getType(result).equals(target.result));
     enforce!ImcompleteDefinitionException(d.context_.rootScope);
+
+    immutable createFunction = d.createCurrentFunction(result);
+    auto e = Execution.createEmpty();
+    createFunction.execute(e);
+    return cast(Function) e.get(e.lastVariable);
 }
 
 ///
@@ -131,7 +185,7 @@ pure unittest
     auto f = funType(funType(t, u), funType(u, v), funType(t, v));
 
     // (t -> u) -> (u -> v) -> (t -> v)
-    define(f, (scope d, a) {
+    immutable functionValue = define(f, (scope d, a) {
         assert(d.getType(a).equals(funType(t, u)));
 
         // (u -> v) -> (t -> v)
@@ -156,6 +210,8 @@ pure unittest
 
         return resultUtoV_TtoV;
     });
+
+    assert(functionValue.type.equals(f));
 }
 
 ///
