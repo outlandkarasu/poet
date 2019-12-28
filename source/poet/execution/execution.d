@@ -29,6 +29,43 @@ final class Execution
     alias SavePoint = Ctx.SavePoint;
 
     /**
+    Returns:
+        empty execution.
+    */
+    static Execution createEmpty() nothrow pure
+    out (r; r !is null)
+    {
+        return new Execution(ROOT_TYPE, ROOT_VALUE);
+    }
+
+    /**
+    restore execution from a save point.
+
+    Params:
+        savePoint = restore save point.
+    */
+    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
+    out (r; context_ !is null)
+    {
+        this.context_ = new Ctx(savePoint);
+    }
+
+    /**
+    create new execution.
+
+    Params:
+        resultType = execution result type.
+        argument = execution argument;
+    */
+    this(Type resultType, Value argument) nothrow pure scope
+    in (resultType !is null)
+    in (argument !is null)
+    out (r; context_ !is null)
+    {
+        this.context_ = new Ctx(resultType, argument);
+    }
+
+    /**
     push value.
 
     Params:
@@ -99,31 +136,9 @@ final class Execution
         return context_.save();
     }
 
-    /**
-    restore execution from a save point.
-
-    Params:
-        savePoint = restore save point.
-    */
-    this()(auto ref const(SavePoint) savePoint) nothrow pure scope
-    out (r; context_ !is null)
+    @property Variable lastVariable() const @nogc nothrow pure scope
     {
-        this.context_ = new Ctx(savePoint);
-    }
-
-    /**
-    create new execution.
-
-    Params:
-        resultType = execution result type.
-        argument = execution argument;
-    */
-    this(Type resultType, Value argument) nothrow pure scope
-    in (resultType !is null)
-    in (argument !is null)
-    out (r; context_ !is null)
-    {
-        this.context_ = new Ctx(resultType, argument);
+        return context_.lastVariable;
     }
 
 private:
@@ -180,4 +195,26 @@ pure unittest
     assertThrown!OutOfScopeException(restored.get(vv2));
     assertThrown!VariableIndexNotFoundException(restored.get(vv3));
 }
+
+private:
+
+immutable class RootType : Type
+{
+    override bool equals(scope Type other) immutable @nogc nothrow pure scope
+    {
+        return other is this;
+    }
+}
+
+immutable ROOT_TYPE = new RootType();
+
+immutable class RootValue : Value
+{
+    override @property Type type() immutable @nogc nothrow pure scope
+    {
+        return ROOT_TYPE;
+    }
+}
+
+immutable ROOT_VALUE = new RootValue();
 

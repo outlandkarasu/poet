@@ -198,9 +198,19 @@ final class Context(SV, V)
     Returns:
         current scope ID.
     */
-    ScopeID scopeID() const @nogc nothrow pure scope
+    @property ScopeID scopeID() const @nogc nothrow pure scope
     {
         return variables_.head.currentScope.id;
+    }
+
+    /**
+    Returns:
+        last variable.
+    */
+    @property Variable lastVariable() const @nogc nothrow pure scope
+    {
+        immutable head = variables_.head;
+        return Variable(head.currentScope.id, head.index);
     }
 
     /**

@@ -16,6 +16,7 @@ import poet.execution :
 import poet.fun : FunctionType;
 import poet.type : Type;
 import poet.utils : List;
+import poet.value : Function;
 
 import poet.definition.exceptions :
     ImcompleteDefinitionException,
@@ -84,28 +85,10 @@ final class Definition
     Variable end()(auto scope ref const(Variable) result) pure scope
     out (r; getType(r))
     {
-        immutable resultType = getType(result);
         immutable targetType = context_.scopeValue;
-        enforce!UnmatchTypeException(resultType.equals(targetType.result));
-
-        Instruction[] instructions;
-        foreach (e; context_)
-        {
-            if (e.instruction)
-            {
-                instructions ~= e.instruction;
-            }
-        }
-
-        immutable createFunctionInstruction = new CreateFunction(
-                targetType,
-                context_.scopeID,
-                instructions,
-                toExecutionVariable(result));
-
+        immutable currentFunction = createCurrentFunction(result);
         context_.popScope();
-
-        auto resultElement = StackElement(targetType);
+        auto resultElement = StackElement(targetType, currentFunction);
         return context_.push(resultElement);
     }
 
@@ -139,6 +122,29 @@ private:
     {
         return Execution.Variable(v.scopeID, v.index);
     }
+
+    CreateFunction createCurrentFunction()(auto scope ref const(Variable) result) pure scope
+    out (r; r !is null)
+    {
+        immutable resultType = getType(result);
+        immutable targetType = context_.scopeValue;
+        enforce!UnmatchTypeException(resultType.equals(targetType.result));
+
+        Instruction[] instructions;
+        foreach (e; context_)
+        {
+            if (e.instruction)
+            {
+                instructions ~= e.instruction;
+            }
+        }
+
+        return new CreateFunction(
+                targetType,
+                context_.scopeID,
+                instructions,
+                toExecutionVariable(result));
+    }
 }
 
 /**
@@ -147,17 +153,24 @@ define function.
 Params:
     target = target function type.
     def = define delegate.
+Returns:
+    defined function.
 */
-void define(
+Function define(
         FunctionType target,
         scope Definition.Variable delegate(scope Definition, const(Definition.Variable)) @safe pure def) pure
 in (target !is null)
 in (def !is null)
+out (r; r !is null)
 {
     scope d = new Definition(target);
     auto result = def(d, Definition.Variable.init);
-    enforce!UnmatchTypeException(d.getType(result).equals(target.result));
     enforce!ImcompleteDefinitionException(d.context_.rootScope);
+
+    immutable createFunction = d.createCurrentFunction(result);
+    auto e = Execution.createEmpty();
+    createFunction.execute(e);
+    return cast(Function) e.get(e.lastVariable);
 }
 
 ///
@@ -172,7 +185,7 @@ pure unittest
     auto f = funType(funType(t, u), funType(u, v), funType(t, v));
 
     // (t -> u) -> (u -> v) -> (t -> v)
-    define(f, (scope d, a) {
+    immutable functionValue = define(f, (scope d, a) {
         assert(d.getType(a).equals(funType(t, u)));
 
         // (u -> v) -> (t -> v)
@@ -197,6 +210,8 @@ pure unittest
 
         return resultUtoV_TtoV;
     });
+
+    assert(functionValue.type.equals(f));
 }
 
 ///
