@@ -67,6 +67,26 @@ immutable final class CList(T)
         return new immutable(CList!T)(item, this);
     }
 
+    /**
+    Params:
+        dg = foreach delegate.
+    Returns:
+        loop result.
+    */
+    int opApplyReverse(scope int delegate(ref immutable(T)) @safe dg)
+    {
+        if (tail_)
+        {
+            auto tailResult = tail_.opApplyReverse(dg);
+            if (tailResult)
+            {
+                return tailResult;
+            }
+        }
+
+        return dg(head_);
+    }
+
 private:
 
     this(T h, immutable(CList!T) t) @nogc nothrow pure scope
@@ -130,6 +150,38 @@ nothrow pure unittest
     assert(saved.find!"a == 999".empty);
 }
 
+///
+unittest
+{
+    import std.range : isForwardRange;
+
+    int[] values;
+    foreach_reverse (v; list(1).append(2).append(3))
+    {
+        values ~= v;
+    }
+
+    assert(values[] == [1, 2, 3]);
+
+    values = [];
+    foreach_reverse (v; list(3))
+    {
+        values ~= v;
+    }
+    assert(values[] == [3]);
+
+    values = [];
+    foreach_reverse (v; list(1).append(2).append(3))
+    {
+        if (v == 1)
+        {
+            break;
+        }
+
+        values ~= v;
+    }
+    assert(values[] == []);
+}
 
 /**
 Immutable list.
