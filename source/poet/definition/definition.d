@@ -4,11 +4,14 @@ Function definition module.
 module poet.definition.definition;
 
 import std.exception : enforce;
+import std.typecons : Rebindable;
 
 import poet.context : Context;
 import poet.exception : UnmatchTypeException;
+import poet.execution : ApplyFunction, CreateFunction, Instruction;
 import poet.fun : FunctionType;
 import poet.type : Type;
+import poet.utils : List;
 
 import poet.definition.exceptions :
     ImcompleteDefinitionException,
@@ -38,7 +41,7 @@ final class Definition
         immutable functionType = cast(FunctionType) context_.scopeValue.result;
         enforce!NotFunctionTypeException(functionType);
 
-        return context_.pushScope(functionType, functionType.argument);
+        return context_.pushScope(functionType, StackElement(functionType.argument));
     }
 
     /**
@@ -59,7 +62,8 @@ final class Definition
         immutable argumentType = getType(a);
         enforce!UnmatchTypeException(functionType.argument.equals(argumentType));
 
-        return context_.push(functionType.result);
+        auto resultElement = StackElement(functionType.result);
+        return context_.push(resultElement);
     }
 
     /**
@@ -78,11 +82,20 @@ final class Definition
         enforce!UnmatchTypeException(resultType.equals(targetType.result));
 
         context_.popScope();
-        return context_.push(targetType);
+
+        auto resultElement = StackElement(targetType);
+        return context_.push(resultElement);
     }
 
 private:
-    alias Ctx = Context!(FunctionType, Type);
+
+    struct StackElement
+    {
+        Type type;
+        Instruction instruction;
+    }
+
+    alias Ctx = Context!(FunctionType, StackElement);
 
     Ctx context_;
 
@@ -90,13 +103,13 @@ private:
     in (target !is null)
     out (r; context_ !is null)
     {
-        this.context_ = new Ctx(target, target.argument);
+        this.context_ = new Ctx(target, StackElement(target.argument));
     }
 
     Type getType()(auto scope ref const(Variable) v) pure scope
     out (r; r !is null)
     {
-        return context_.getValue(v);
+        return context_.getValue(v).type;
     }
 }
 
