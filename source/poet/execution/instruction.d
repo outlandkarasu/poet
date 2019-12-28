@@ -46,13 +46,18 @@ final immutable class CApplyFunction : IInstruction
         e.push(f.apply(a));
     }
 
-private:
-
-    this()(scope auto ref const(Execution.Variable) f, scope auto ref const(Execution.Variable) a,)
+    /**
+    Params:
+        f = function variable.
+        a = argument variable.
+    */
+    this()(scope auto ref const(Execution.Variable) f, scope auto ref const(Execution.Variable) a,) immutable @nogc nothrow pure scope
     {
         this.f_ = f;
         this.a_ = a;
     }
+
+private:
 
     Execution.Variable f_;
     Execution.Variable a_;
