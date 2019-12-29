@@ -130,12 +130,6 @@ private:
         return context_.getValue(v).type;
     }
 
-    static Execution.Variable toExecutionVariable()(
-            auto scope ref const(Variable) v) @nogc nothrow pure
-    {
-        return Execution.Variable(v.scopeID, v.index);
-    }
-
     CreateFunction createCurrentFunction()(auto scope ref const(Variable) result) pure scope
     out (r; r !is null)
     {
@@ -158,6 +152,30 @@ private:
                 instructions,
                 toExecutionVariable(result));
     }
+}
+
+/**
+Definition variable to execution variable.
+
+Params:
+    v = definition variable.
+Returns:
+    execution variable.
+*/
+Execution.Variable toExecutionVariable()(
+    auto scope ref const(Definition.Variable) v) @nogc nothrow pure
+{
+    return Execution.Variable(v.scopeID, v.index);
+}
+
+///
+@nogc nothrow pure unittest
+{
+    import poet.context : ScopeID, VariableIndex;
+
+    auto ev = Definition.Variable(ScopeID(123), VariableIndex(456)).toExecutionVariable;
+    assert(ev.scopeID == 123);
+    assert(ev.index == 456);
 }
 
 /**
