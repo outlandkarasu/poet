@@ -6,7 +6,7 @@ module poet.definition.definition;
 import std.exception : enforce;
 import std.typecons : Rebindable;
 
-import poet.context : Context;
+import poet.context : Context, ScopeID;
 import poet.exception : UnmatchTypeException;
 import poet.execution :
     ApplyFunction,
@@ -121,13 +121,18 @@ private:
     in (target !is null)
     out (r; context_ !is null)
     {
-        this.context_ = new Ctx(target, StackElement(target.argument));
+        this.context_ = new Ctx(ScopeID(1), target, StackElement(target.argument));
     }
 
     Type getType()(auto scope ref const(Variable) v) pure scope
     out (r; r !is null)
     {
         return context_.getValue(v).type;
+    }
+
+    @property Variable lastVariable() const @nogc nothrow pure scope
+    {
+        return context_.lastVariable;
     }
 
     CreateFunction createCurrentFunction()(auto scope ref const(Variable) result) pure scope
@@ -195,7 +200,7 @@ in (def !is null)
 out (r; r !is null)
 {
     scope d = new Definition(target);
-    auto result = def(d, Definition.Variable.init);
+    auto result = def(d, d.lastVariable);
     enforce!ImcompleteDefinitionException(d.context_.rootScope);
 
     immutable createFunction = d.createCurrentFunction(result);

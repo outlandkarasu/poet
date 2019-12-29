@@ -97,6 +97,24 @@ pure unittest
         [ self ]
     ]);
     assert(peano !is null);
+
+    assert(peano.constructors.length == 2);
+    assert(peano.constructors[0].type.equals(peano));
+    assert(peano.constructors[1].type.equals(funType(peano, peano)));
+
+    immutable zero = cast(InductiveValue) peano.constructors[0];
+    assert(zero !is null);
+    assert(zero.values.length == 0);
+    assert(zero.constructorID == ConstructorID(0));
+
+    immutable suc = cast(Function) peano.constructors[1];
+    assert(suc !is null);
+
+    immutable one = cast(InductiveValue) suc.apply(zero);
+    assert(one !is null);
+    assert(one.type.equals(peano));
+    assert(one.values.length == 1);
+    assert(one.constructorID == ConstructorID(1));
 }
 
 /**
@@ -151,6 +169,7 @@ final immutable class CConstructInductiveValue : IInstruction
         enforce!UnmatchTypeException(ctor);
 
         immutable values = arguments_.map!((a) => e.get(a)).array;
+        import std.string : format;
         enforce!UnmatchTypeException(ctor.isMatchArguments(values.map!"a.type".array));
 
         e.push(new InductiveValue(type_, constructorID_, values));
@@ -184,8 +203,8 @@ out (r; r !is null)
 
     return define(type, delegate(scope d, a) {
         auto argumentVariables = arguments[1 .. $].map!((e) => d.begin().toExecutionVariable).array;
-        immutable instruction = new ConstructInductiveValue(result, id, argumentVariables);
-        return reduce!((r, a) => d.end(r))(d.pushInstruction(result, instruction), arguments[1 .. $]);
+        immutable instruction = new ConstructInductiveValue(result, id, [ a.toExecutionVariable ] ~ argumentVariables);
+        return reduce!((r, _) => d.end(r))(d.pushInstruction(result, instruction), arguments[1 .. $]);
     });
 }
 
