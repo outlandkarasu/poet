@@ -69,9 +69,7 @@ final class Definition
 
         immutable applyInstruction = new ApplyFunction(
                 toExecutionVariable(f), toExecutionVariable(a));
-
-        auto resultElement = StackElement(functionType.result, applyInstruction);
-        return context_.push(resultElement);
+        return pushInstruction(functionType.result, applyInstruction);
     }
 
     /**
@@ -88,8 +86,23 @@ final class Definition
         immutable targetType = context_.scopeValue;
         immutable currentFunction = createCurrentFunction(result);
         context_.popScope();
-        auto resultElement = StackElement(targetType, currentFunction);
-        return context_.push(resultElement);
+        return pushInstruction(targetType, currentFunction);
+    }
+
+    /**
+    Push an instruction.
+
+    Params:
+        result = instruction result type.
+        instruction = push instruction.
+    Returns:
+        instruction result variable.
+    */
+    Variable pushInstruction(Type result, Instruction instruction) nothrow pure scope
+    in (result !is null)
+    in (instruction !is null)
+    {
+        return context_.push(StackElement(result, instruction));
     }
 
 private:
@@ -158,7 +171,7 @@ Returns:
 */
 Function define(
         FunctionType target,
-        scope Definition.Variable delegate(scope Definition, const(Definition.Variable)) @safe pure def) pure
+        scope Definition.Variable delegate(scope Definition, Definition.Variable) @safe pure def) pure
 in (target !is null)
 in (def !is null)
 out (r; r !is null)
