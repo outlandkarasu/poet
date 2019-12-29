@@ -135,3 +135,45 @@ Immutable function type.
 */
 alias FunctionType = immutable(CFunctionType);
 
+/**
+Check argument types.
+
+Params:
+    f = function type.
+    types = argument types.
+Return:
+    true if match all types.
+*/
+bool isMatchArguments(scope FunctionType f, scope Type[] types...) @nogc nothrow pure
+in (f !is null)
+{
+    if (types.length == 0 || !types[0].equals(f.argument))
+    {
+        return false;
+    }
+
+    immutable result = cast(FunctionType) f.result;
+    if (!result)
+    {
+        return types.length == 1;
+    }
+
+    return result.isMatchArguments(types[1 .. $]);
+}
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+
+    immutable t = example();
+    immutable u = example();
+    immutable v = example();
+    immutable f = funType(t, u, v);
+
+    assert(f.isMatchArguments(t, u));
+    assert(!f.isMatchArguments(t));
+    assert(!f.isMatchArguments(u));
+    assert(!f.isMatchArguments(t, u, v));
+    assert(!f.isMatchArguments());
+}
