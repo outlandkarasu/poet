@@ -61,13 +61,27 @@ final class Context(SV, V)
     constructor.
 
     Params:
+        scopeID = scope ID.
+        scopeValue = first scope value.
+        value = first variable value.
+    */
+    this(ScopeID scopeID, SV scopeValue, V value) nothrow pure scope
+    {
+        auto s = new Scope(scopeID, scopeValue, null);
+        this.variables_ = list(Entry(s, VariableIndex.init, value));
+        this.lastScopeID_ = scopeID;
+    }
+
+    /**
+    constructor.
+
+    Params:
         scopeValue = first scope value.
         value = first variable value.
     */
     this(SV scopeValue, V value) nothrow pure scope
     {
-        auto s = new Scope(lastScopeID_, scopeValue, null);
-        this.variables_ = list(Entry(s, VariableIndex.init, value));
+        this(ScopeID.init, scopeValue, value);
     }
 
     /**
@@ -101,7 +115,6 @@ final class Context(SV, V)
         lastScopeID_ = sid;
         return Variable(sid, index);
     }
-
 
     /**
     push new scope.

@@ -6,7 +6,7 @@ module poet.definition.definition;
 import std.exception : enforce;
 import std.typecons : Rebindable;
 
-import poet.context : Context;
+import poet.context : Context, ScopeID;
 import poet.exception : UnmatchTypeException;
 import poet.execution :
     ApplyFunction,
@@ -69,9 +69,7 @@ final class Definition
 
         immutable applyInstruction = new ApplyFunction(
                 toExecutionVariable(f), toExecutionVariable(a));
-
-        auto resultElement = StackElement(functionType.result, applyInstruction);
-        return context_.push(resultElement);
+        return pushInstruction(functionType.result, applyInstruction);
     }
 
     /**
@@ -88,8 +86,23 @@ final class Definition
         immutable targetType = context_.scopeValue;
         immutable currentFunction = createCurrentFunction(result);
         context_.popScope();
-        auto resultElement = StackElement(targetType, currentFunction);
-        return context_.push(resultElement);
+        return pushInstruction(targetType, currentFunction);
+    }
+
+    /**
+    Push an instruction.
+
+    Params:
+        result = instruction result type.
+        instruction = push instruction.
+    Returns:
+        instruction result variable.
+    */
+    Variable pushInstruction(Type result, Instruction instruction) nothrow pure scope
+    in (result !is null)
+    in (instruction !is null)
+    {
+        return context_.push(StackElement(result, instruction));
     }
 
 private:
@@ -108,7 +121,7 @@ private:
     in (target !is null)
     out (r; context_ !is null)
     {
-        this.context_ = new Ctx(target, StackElement(target.argument));
+        this.context_ = new Ctx(ScopeID(1), target, StackElement(target.argument));
     }
 
     Type getType()(auto scope ref const(Variable) v) pure scope
@@ -117,10 +130,9 @@ private:
         return context_.getValue(v).type;
     }
 
-    static Execution.Variable toExecutionVariable()(
-            auto scope ref const(Variable) v) @nogc nothrow pure
+    @property Variable lastVariable() const @nogc nothrow pure scope
     {
-        return Execution.Variable(v.scopeID, v.index);
+        return context_.lastVariable;
     }
 
     CreateFunction createCurrentFunction()(auto scope ref const(Variable) result) pure scope
@@ -148,6 +160,30 @@ private:
 }
 
 /**
+Definition variable to execution variable.
+
+Params:
+    v = definition variable.
+Returns:
+    execution variable.
+*/
+Execution.Variable toExecutionVariable()(
+    auto scope ref const(Definition.Variable) v) @nogc nothrow pure
+{
+    return Execution.Variable(v.scopeID, v.index);
+}
+
+///
+@nogc nothrow pure unittest
+{
+    import poet.context : ScopeID, VariableIndex;
+
+    auto ev = Definition.Variable(ScopeID(123), VariableIndex(456)).toExecutionVariable;
+    assert(ev.scopeID == 123);
+    assert(ev.index == 456);
+}
+
+/**
 define function.
 
 Params:
@@ -158,13 +194,13 @@ Returns:
 */
 Function define(
         FunctionType target,
-        scope Definition.Variable delegate(scope Definition, const(Definition.Variable)) @safe pure def) pure
+        scope Definition.Variable delegate(scope Definition, Definition.Variable) @safe pure def) pure
 in (target !is null)
 in (def !is null)
 out (r; r !is null)
 {
     scope d = new Definition(target);
-    auto result = def(d, Definition.Variable.init);
+    auto result = def(d, d.lastVariable);
     enforce!ImcompleteDefinitionException(d.context_.rootScope);
 
     immutable createFunction = d.createCurrentFunction(result);
