@@ -25,6 +25,18 @@ final class Context
         this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
     }
 
+    @property ScopeID scopeID() const @nogc nothrow pure scope
+    {
+        return values_.head.currentScope.id;
+    }
+
+    ///
+    nothrow pure unittest
+    {
+        auto c = new Context();
+        assert(c.scopeID == ScopeID.init);
+    }
+
 private:
     List!ContextEntry values_;
 }
@@ -96,13 +108,13 @@ struct ContextEntry
 
 final immutable class CScope
 {
-    this(ScopeID scopeID, List!ContextEntry before) @nogc nothrow pure scope
+    this(ScopeID id, List!ContextEntry before) @nogc nothrow pure scope
     {
-        this.scopeID = scopeID;
+        this.id = id;
         this.before = before;
     }
 
-    ScopeID scopeID;
+    ScopeID id;
     List!ContextEntry before;
 }
 
