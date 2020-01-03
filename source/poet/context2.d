@@ -6,7 +6,7 @@ module poet.context2;
 import std.typecons : Typedef;
 
 import poet.type : IType, Type;
-import poet.utils : List;
+import poet.utils : List, list;
 import poet.value : IValue, Value;
 
 @safe:
@@ -16,6 +16,15 @@ Value context type.
 */
 final class Context
 {
+    /**
+    construct with root scope.
+    */
+    this() nothrow pure scope
+    {
+        immutable rootScope = new Scope(ScopeID.init, null);
+        this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
+    }
+
 private:
     List!ContextEntry values_;
 }
@@ -76,17 +85,25 @@ private:
 alias RootValue = immutable(CRootValue);
 
 alias ScopeID = Typedef!(size_t, size_t.init, "ScopeID");
+alias VariableIndex = Typedef!(size_t, size_t.init, "VariableIndex");
 
 struct ContextEntry
 {
     Scope currentScope;
+    VariableIndex index;
     Value value;
 }
 
 final immutable class CScope
 {
-    List!ContextEntry before;
+    this(ScopeID scopeID, List!ContextEntry before) @nogc nothrow pure scope
+    {
+        this.scopeID = scopeID;
+        this.before = before;
+    }
+
     ScopeID scopeID;
+    List!ContextEntry before;
 }
 
 alias Scope = immutable(CScope);
