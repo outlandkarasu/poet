@@ -14,6 +14,16 @@ import poet.value : IValue, Value;
 @safe:
 
 /**
+Context scope ID.
+*/
+alias ScopeID = Typedef!(size_t, size_t.init, "ScopeID");
+
+/**
+Context variable index.
+*/
+alias VariableIndex = Typedef!(size_t, size_t.init, "VariableIndex");
+
+/**
 Context variable.
 */
 struct Variable
@@ -62,6 +72,41 @@ final class Context
             auto c = new Context();
             assert(c.index == VariableIndex.init);
         }
+    }
+
+    /**
+    Push new scope and value.
+
+    Params:
+        newScopeID = new scope ID
+        value = pushing value
+    Throws: InvalidScopeOrderException if new scope ID less than or equals current scope ID.
+    */
+    void pushScope(ScopeID newScopeID, Value value) pure scope
+    in (value !is null)
+    {
+        enforce!InvalidScopeOrderException(scopeID < newScopeID);
+
+        immutable newScope = new Scope(newScopeID, values_);
+        this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
+    }
+
+    ///
+    pure unittest
+    {
+        import std.exception : assertThrown;
+        import poet.example : example;
+
+        auto c = new Context();
+        auto v = example().createValue();
+
+        // invalid order scope ID.
+        assertThrown!InvalidScopeOrderException(c.pushScope(ScopeID(0), v));
+
+        c.pushScope(ScopeID(c.scopeID + 1), v);
+        assert(c.scopeID == ScopeID(1));
+        assert(c.index == VariableIndex.init);
+        assert(c.get(Variable(ScopeID(c.scopeID), VariableIndex.init)) is v);
     }
 
     /**
@@ -206,6 +251,15 @@ class VariableNotFoundException : ContextException
     mixin basicExceptionCtors;
 }
 
+/**
+Invalid scope order exception.
+*/
+class InvalidScopeOrderException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
 private:
 
 final immutable class CRootType : IType
@@ -260,9 +314,6 @@ private:
 }
 
 alias RootValue = immutable(CRootValue);
-
-alias ScopeID = Typedef!(size_t, size_t.init, "ScopeID");
-alias VariableIndex = Typedef!(size_t, size_t.init, "VariableIndex");
 
 struct ContextEntry
 {
