@@ -131,6 +131,38 @@ final class Context
         assert(c.getOrNull(Variable(ScopeID.init, VariableIndex.init)) is RootValue.instance);
     }
 
+    /**
+    Get a value or throw exception.
+
+    Params:
+        v = value variable.
+    Returns:
+        a value.
+    Throws: VariableNotFoundException if value not found.
+    */
+    Value get()(auto scope ref const(Variable) v) const pure scope
+    out (r; r !is null)
+    {
+        return enforce!VariableNotFoundException(getOrNull(v));
+    }
+
+    ///
+    pure unittest
+    {
+        import std.exception : assertThrown;
+
+        auto c = new Context();
+
+        // scope not found.
+        assertThrown!VariableNotFoundException(c.get(Variable(ScopeID(123), VariableIndex.init)));
+
+        // value not found.
+        assertThrown!VariableNotFoundException(c.get(Variable(ScopeID.init, VariableIndex(1))));
+
+        // found root value.
+        assert(c.get(Variable(ScopeID.init, VariableIndex.init)) is RootValue.instance);
+    }
+
 private:
     Rebindable!(List!ContextEntry) values_;
 
