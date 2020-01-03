@@ -72,6 +72,18 @@ final class Context
             auto c = new Context();
             assert(c.index == VariableIndex.init);
         }
+
+        Variable lastVariable() @nogc scope
+        {
+            return Variable(scopeID, values_.head.index);
+        }
+
+        ///
+        unittest
+        {
+            auto c = new Context();
+            assert(c.lastVariable == Variable(c.scopeID, VariableIndex.init));
+        }
     }
 
     /**
@@ -80,15 +92,19 @@ final class Context
     Params:
         newScopeID = new scope ID
         value = pushing value
+    Returns:
+        pushed value variable.
     Throws: InvalidScopeOrderException if new scope ID less than or equals current scope ID.
     */
-    void pushScope(ScopeID newScopeID, Value value) pure scope
+    Variable pushScope(ScopeID newScopeID, Value value) pure scope
     in (value !is null)
     {
         enforce!InvalidScopeOrderException(scopeID < newScopeID);
 
         immutable newScope = new Scope(newScopeID, values_);
         this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
+
+        return lastVariable;
     }
 
     ///
@@ -103,10 +119,11 @@ final class Context
         // invalid order scope ID.
         assertThrown!InvalidScopeOrderException(c.pushScope(ScopeID(0), v));
 
-        c.pushScope(ScopeID(c.scopeID + 1), v);
+        auto vv = c.pushScope(ScopeID(c.scopeID + 1), v);
         assert(c.scopeID == ScopeID(1));
         assert(c.index == VariableIndex.init);
-        assert(c.get(Variable(ScopeID(c.scopeID), VariableIndex.init)) is v);
+        assert(vv == Variable(ScopeID(1), VariableIndex.init));
+        assert(c.get(vv) is v);
     }
 
     /**
@@ -114,24 +131,28 @@ final class Context
 
     Params:
         value = pushing value
+    Returns:
+        pushed value variable.
     */
-    void push(Value value) nothrow pure scope
+    Variable push(Value value) nothrow pure scope
     in (value !is null)
     {
         values_ = values_.append(ContextEntry(currentScope, VariableIndex(index + 1), value));
+        return lastVariable;
     }
 
     ///
-    nothrow pure unittest
+    pure unittest
     {
         import poet.example : example;
 
         auto c = new Context();
 
         auto v = example().createValue();
-        c.push(v);
+        auto vv = c.push(v);
         assert(c.scopeID == ScopeID.init);
         assert(c.index == VariableIndex(1));
+        assert(c.get(vv) is v);
     }
 
     /**
