@@ -3,7 +3,7 @@ Context module.
 */
 module poet.context2;
 
-import std.typecons : Typedef;
+import std.typecons : Rebindable, Typedef;
 
 import poet.type : IType, Type;
 import poet.utils : List, list;
@@ -25,20 +25,44 @@ final class Context
         this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
     }
 
-    @property ScopeID scopeID() const @nogc nothrow pure scope
+    @property const nothrow pure
     {
-        return values_.head.currentScope.id;
-    }
+        VariableIndex index() @nogc scope
+        {
+            return values_.head.index;
+        }
 
-    ///
-    nothrow pure unittest
-    {
-        auto c = new Context();
-        assert(c.scopeID == ScopeID.init);
+        ///
+        unittest
+        {
+            auto c = new Context();
+            assert(c.scopeID == ScopeID.init);
+        }
+
+        ScopeID scopeID() @nogc scope
+        {
+            return currentScope.id;
+        }
+
+        ///
+        unittest
+        {
+            auto c = new Context();
+            assert(c.index == VariableIndex.init);
+        }
     }
 
 private:
-    List!ContextEntry values_;
+    Rebindable!(List!ContextEntry) values_;
+
+    @property const @nogc nothrow pure scope
+    {
+        Scope currentScope()
+        out(r; r !is null)
+        {
+            return values_.head.currentScope;
+        }
+    }
 }
 
 private:
