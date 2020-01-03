@@ -3,8 +3,10 @@ Context module.
 */
 module poet.context2;
 
-import std.typecons : Rebindable, Typedef;
+import std.exception : basicExceptionCtors, enforce;
+import std.typecons : Rebindable, rebindable, Typedef;
 
+import poet.exception : PoetException;
 import poet.type : IType, Type;
 import poet.utils : List, list;
 import poet.value : IValue, Value;
@@ -12,7 +14,17 @@ import poet.value : IValue, Value;
 @safe:
 
 /**
-Value context type.
+Context variable.
+*/
+struct Variable
+{
+private:
+    ScopeID scopeID;
+    VariableIndex index;
+}
+
+/**
+Value context.
 */
 final class Context
 {
@@ -52,6 +64,12 @@ final class Context
         }
     }
 
+    /**
+    Push a value to current scope.
+
+    Params:
+        value = pushing value
+    */
     void push(Value value) nothrow pure scope
     in (value !is null)
     {
@@ -71,6 +89,48 @@ final class Context
         assert(c.index == VariableIndex(1));
     }
 
+    /**
+    Get a value by variable.
+
+    Params:
+        v = a value pointed variable.
+    Returns:
+        pointed value or null.
+    */
+    Value getOrNull()(auto scope ref const(Variable) v) const @nogc nothrow pure scope
+    {
+        immutable scopeTop = getScopeTopOrNull(v.scopeID);
+        if (scopeTop is null)
+        {
+            return null;
+        }
+
+        for (Rebindable!(List!ContextEntry) e = scopeTop; e; e = e.tail)
+        {
+            if (e.head.index == v.index)
+            {
+                return e.head.value;
+            }
+        }
+
+        return null;
+    }
+
+    ///
+    nothrow pure unittest
+    {
+        auto c = new Context();
+
+        // scope not found.
+        assert(c.getOrNull(Variable(ScopeID(123), VariableIndex.init)) is null);
+
+        // value not found.
+        assert(c.getOrNull(Variable(ScopeID.init, VariableIndex(1))) is null);
+
+        // found root value.
+        assert(c.getOrNull(Variable(ScopeID.init, VariableIndex.init)) is RootValue.instance);
+    }
+
 private:
     Rebindable!(List!ContextEntry) values_;
 
@@ -81,7 +141,37 @@ private:
         {
             return values_.head.currentScope;
         }
+
+        List!ContextEntry getScopeTopOrNull(ScopeID id)
+        {
+            for (Rebindable!(List!ContextEntry) l = values_; l; l = l.head.currentScope.before)
+            {
+                if (l.head.currentScope.id == id)
+                {
+                    return l;
+                }
+            }
+            return null;
+        }
     }
+}
+
+/**
+Context exception.
+*/
+class ContextException : PoetException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Context variable not found exception.
+*/
+class VariableNotFoundException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
 }
 
 private:
