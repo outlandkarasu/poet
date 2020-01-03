@@ -52,6 +52,25 @@ final class Context
         }
     }
 
+    void push(Value value) nothrow pure scope
+    in (value !is null)
+    {
+        values_ = values_.append(ContextEntry(currentScope, VariableIndex(index + 1), value));
+    }
+
+    ///
+    nothrow pure unittest
+    {
+        import poet.example : example;
+
+        auto c = new Context();
+
+        auto v = example().createValue();
+        c.push(v);
+        assert(c.scopeID == ScopeID.init);
+        assert(c.index == VariableIndex(1));
+    }
+
 private:
     Rebindable!(List!ContextEntry) values_;
 
