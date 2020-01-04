@@ -229,6 +229,58 @@ final class Context
         assert(c.get(Variable(ScopeID.init, VariableIndex.init)) is RootValue.instance);
     }
 
+    /**
+    foreach implement.
+
+    Params:
+        dg = foreach delegate.
+    Returns:
+        foreach result.
+    */
+    int opApply(Dg)(scope Dg dg)
+    {
+        return opApplyImpl(scopeID, values_, dg);
+    }
+
+    ///
+    pure unittest
+    {
+        import poet.example : example;
+
+
+        auto c = new Context();
+
+        immutable v1 = example().createValue();
+        immutable v2 = example().createValue();
+        immutable v3 = example().createValue();
+        c.push(v1);
+        c.push(v2);
+        c.push(v3);
+
+        Value[] values;
+        foreach (Value value; c)
+        {
+            values ~= value;
+        }
+
+        assert(values.length == 3);
+        assert(values[0] is v1);
+        assert(values[1] is v2);
+        assert(values[2] is v3);
+
+        immutable v4 = example().createValue();
+        c.pushScope(ScopeID(1), v4);
+
+        values = [];
+        foreach (Value value; c)
+        {
+            values ~= value;
+        }
+
+        assert(values.length == 1);
+        assert(values[0] is v4);
+    }
+
 private:
     Rebindable!(List!ContextEntry) values_;
 
@@ -251,6 +303,25 @@ private:
             }
             return null;
         }
+    }
+
+    int opApplyImpl(Dg)(ScopeID id, scope List!ContextEntry entry, scope Dg dg)
+    {
+        if (entry.tail && entry.tail.head.currentScope.id == id)
+        {
+            immutable result = opApplyImpl(id, entry.tail, dg);
+            if (result)
+            {
+                return result;
+            }
+        }
+
+        if (entry.head.currentScope.id != id || entry.head.value is RootValue.instance)
+        {
+            return 0;
+        }
+
+        return dg(entry.head.value);
     }
 }
 
