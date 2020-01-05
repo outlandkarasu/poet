@@ -67,11 +67,13 @@ struct SavePoint
 
 private:
     List!ContextEntry values;
+    ScopeID lastScopeID;
 
     this(scope const(Context) context) @nogc nothrow pure scope
     in (context !is null)
     {
         this.values = context.values_;
+        this.lastScopeID = context.lastScopeID_;
     }
 }
 
@@ -98,7 +100,7 @@ final class Context
     this(SavePoint savePoint) @nogc nothrow pure scope
     {
         this.values_ = savePoint.values;
-        this.lastScopeID_ = values_.head.currentScope.id;
+        this.lastScopeID_ = savePoint.lastScopeID;
     }
 
     @property const pure
@@ -221,11 +223,15 @@ final class Context
     Variable pushScope(ScopeID newScopeID, Value value) pure scope
     in (value !is null)
     {
-        enforce!InvalidScopeOrderException(lastScopeID < newScopeID);
+        enforce!InvalidScopeOrderException(scopeID < newScopeID);
 
         immutable newScope = new Scope(newScopeID, values_);
         this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
-        this.lastScopeID_ = newScopeID;
+
+        if (lastScopeID_ < newScopeID)
+        {
+            this.lastScopeID_ = newScopeID;
+        }
 
         return lastVariable;
     }
@@ -249,6 +255,15 @@ final class Context
         assert(c.index == VariableIndex.init);
         assert(vv == Variable(ScopeID(1), VariableIndex.init));
         assert(c.get(vv) is v);
+
+        c.pushScope(c.scopeID.next, v);
+        assert(c.lastScopeID == ScopeID(2));
+        c.popScope();
+        c.popScope();
+
+        // push same scope ID.
+        c.pushScope(c.scopeID.next, v);
+        assert(c.lastScopeID == ScopeID(2));
     }
 
     /**
