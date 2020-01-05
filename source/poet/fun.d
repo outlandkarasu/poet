@@ -3,7 +3,10 @@ Function type module.
 */
 module poet.fun;
 
+import poet.instruction : Instruction;
+import poet.context : Variable;
 import poet.type : IType, Type;
+import poet.value : IValue, Value;
 
 @safe:
 
@@ -177,3 +180,51 @@ nothrow pure unittest
     assert(!f.isMatchArguments(t, u, v));
     assert(!f.isMatchArguments());
 }
+
+/**
+Function value.
+*/
+final immutable class CFunctionValue : IValue
+{
+    /**
+    Constructor.
+
+    Params:
+        type = function type.
+        instructions = function instructions.
+        result = function result variable.
+    */
+    this(FunctionType type, Instruction[] instructions, Variable result)
+    in (type !is null)
+    {
+        this.type_ = type;
+        this.instructions_ = instructions;
+        this.result_ = result;
+    }
+
+    @property @nogc nothrow pure scope
+    {
+        override FunctionType type()
+        {
+            return type_;
+        }
+
+        Instruction[] instructions()
+        {
+            return instructions_;
+        }
+
+        ref const(Variable) result() return
+        {
+            return result_;
+        }
+    }
+
+private:
+    FunctionType type_;
+    Instruction[] instructions_;
+    Variable result_;
+}
+
+alias FunctionValue = immutable(CFunctionValue);
+

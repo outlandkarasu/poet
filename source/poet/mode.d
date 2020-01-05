@@ -5,6 +5,7 @@ Context mode module.
 import std.exception : basicExceptionCtors, enforce;
 
 import poet.context : Context, ContextException, next, ScopeID;
+import poet.instruction : Instruction;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
 import poet.value : IValue, Value;
@@ -63,9 +64,11 @@ final class DefineFunctionMode
     {
         enforce!ModeConflictException(context_.beforeScopeID == startScopeID_);
 
+        Instruction[] instructions;
         foreach (Value v; context_)
         {
-            immutable i = enforce!NotInstructionException(cast(InstructionValue) v);
+            immutable instructionValue = enforce!NotInstructionException(cast(InstructionValue) v);
+            instructions ~= instructionValue.instruction;
         }
 
         context_.popScope();
@@ -193,10 +196,12 @@ alias InstructionType = immutable(CInstructionType);
 
 final immutable class CInstructionValue : IValue
 {
-    this(Type valueType) @nogc nothrow pure scope
+    this(Type valueType, Instruction instruction) @nogc nothrow pure scope
     in (valueType !is null)
+    in (instruction !is null)
     {
         this.valueType_ = valueType;
+        this.instruction_ = instruction;
     }
 
     @property @nogc nothrow pure scope
@@ -207,24 +212,34 @@ final immutable class CInstructionValue : IValue
         }
 
         Type valueType()
+        out (r; r !is null)
         {
             return valueType_;
+        }
+
+        Instruction instruction()
+        out (r; r !is null)
+        {
+            return instruction_;
         }
     }
 
 private:
     Type valueType_;
+    Instruction instruction_;
 }
 
 ///
 nothrow pure unittest
 {
     import poet.example : example;
+    import poet.instruction : NoopInstruction;
 
     immutable t = example();
-    immutable v = new InstructionValue(t);
+    immutable v = new InstructionValue(t, NoopInstruction.instance);
     assert(v.type.equals(InstructionType.instance));
     assert(v.valueType.equals(t));
+    assert(v.instruction is NoopInstruction.instance);
 }
 
 alias InstructionValue = immutable(CInstructionValue);
