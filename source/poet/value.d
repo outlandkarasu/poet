@@ -1,7 +1,7 @@
 /**
 Value module.
 */
-module poet.value.value;
+module poet.value;
 
 import poet.type : Type;
 
