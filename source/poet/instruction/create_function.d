@@ -72,6 +72,5 @@ pure unittest
     assert(fv.execute(tv) is tv);
 }
 
-
 alias CreateFunctionInstruction = immutable(CCreateFunctionInstruction);
 
