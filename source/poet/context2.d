@@ -4,7 +4,11 @@ Context module.
 module poet.context2;
 
 import std.exception : basicExceptionCtors, enforce;
-import std.typecons : Rebindable, rebindable, Typedef;
+import std.typecons :
+    Nullable,
+    Rebindable,
+    rebindable,
+    Typedef;
 
 import poet.exception : PoetException;
 import poet.type : IType, Type;
@@ -68,28 +72,11 @@ final class Context
         this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
     }
 
-    @property const nothrow pure
+    @property const pure
     {
-        VariableIndex index() @nogc scope
+        VariableIndex index() @nogc nothrow scope
         {
             return values_.head.index;
-        }
-
-        ///
-        unittest
-        {
-            auto c = new Context();
-            assert(c.scopeID == ScopeID.init);
-        }
-
-        ScopeID scopeID() @nogc scope
-        {
-            return currentScope.id;
-        }
-
-        ScopeID lastScopeID() @nogc scope
-        {
-            return lastScopeID_;
         }
 
         ///
@@ -99,13 +86,61 @@ final class Context
             assert(c.index == VariableIndex.init);
         }
 
-        Variable lastVariable() @nogc scope
+        ScopeID scopeID() @nogc nothrow scope
+        {
+            return currentScope.id;
+        }
+
+        ///
+        nothrow unittest
+        {
+            auto c = new Context();
+            assert(c.scopeID == ScopeID.init);
+        }
+
+        ScopeID lastScopeID() @nogc nothrow scope
+        {
+            return lastScopeID_;
+        }
+
+        ///
+        unittest
+        {
+            import poet.example : example;
+
+            auto c = new Context();
+            assert(c.lastScopeID == ScopeID(0));
+
+            immutable v = example().createValue();
+            c.pushScope(c.lastScopeID.next, v);
+            assert(c.lastScopeID == ScopeID(1));
+        }
+
+        Nullable!ScopeID beforeScopeID() @nogc nothrow scope
+        {
+            return currentScope.before ? Nullable!ScopeID(currentScope.before.head.currentScope.id) : Nullable!ScopeID.init;
+        }
+
+        ///
+        unittest
+        {
+            import poet.example : example;
+
+            auto c = new Context();
+            assert(c.beforeScopeID.isNull);
+
+            immutable v = example().createValue();
+            c.pushScope(c.lastScopeID.next, v);
+            assert(c.beforeScopeID == ScopeID(0));
+        }
+
+        Variable lastVariable() @nogc nothrow scope
         {
             return Variable(scopeID, values_.head.index);
         }
 
         ///
-        unittest
+        nothrow unittest
         {
             auto c = new Context();
             assert(c.lastVariable == Variable(c.scopeID, VariableIndex.init));
