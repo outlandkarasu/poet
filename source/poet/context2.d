@@ -114,6 +114,8 @@ final class Context
             immutable v = example().createValue();
             c.pushScope(c.lastScopeID.next, v);
             assert(c.lastScopeID == ScopeID(1));
+            c.popScope();
+            assert(c.lastScopeID == ScopeID(1));
         }
 
         Nullable!ScopeID beforeScopeID() @nogc nothrow scope
@@ -132,6 +134,8 @@ final class Context
             immutable v = example().createValue();
             c.pushScope(c.lastScopeID.next, v);
             assert(c.beforeScopeID == ScopeID(0));
+            c.popScope();
+            assert(c.beforeScopeID != ScopeID(0));
         }
 
         Variable lastVariable() @nogc nothrow scope
