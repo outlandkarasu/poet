@@ -6,6 +6,7 @@ module poet.mode;
 import poet.context2 : Context, ScopeID;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
+import poet.value : IValue;
 
 @safe:
 
@@ -63,4 +64,42 @@ nothrow pure unittest
 }
 
 alias ArgumentType = immutable(CArgumentType);
+
+final immutable class CArgumentValue : IValue
+{
+    this(Type valueType) @nogc nothrow pure scope
+    in (valueType !is null)
+    {
+        this.valueType_ = valueType;
+    }
+
+    @property @nogc nothrow pure scope
+    {
+        override Type type()
+        {
+            return ArgumentType.instance;
+        }
+
+        Type valueType()
+        {
+            return valueType_;
+        }
+    }
+
+private:
+    Type valueType_;
+}
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+
+    immutable t = example();
+    immutable v = new ArgumentValue(t);
+    assert(v.type.equals(ArgumentType.instance));
+    assert(v.valueType.equals(t));
+}
+
+alias ArgumentValue = immutable(CArgumentValue);
 
