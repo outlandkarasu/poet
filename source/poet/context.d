@@ -67,13 +67,11 @@ struct SavePoint
 
 private:
     List!ContextEntry values;
-    ScopeID lastScopeID;
 
     this(scope const(Context) context) @nogc nothrow pure scope
     in (context !is null)
     {
         this.values = context.values_;
-        this.lastScopeID = context.lastScopeID_;
     }
 }
 
@@ -100,7 +98,7 @@ final class Context
     this(SavePoint savePoint) @nogc nothrow pure scope
     {
         this.values_ = savePoint.values;
-        this.lastScopeID_ = savePoint.lastScopeID;
+        this.lastScopeID_ = values_.head.currentScope.id;
     }
 
     @property const pure

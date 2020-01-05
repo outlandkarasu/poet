@@ -4,8 +4,9 @@ Context mode module.
 
 import std.exception : basicExceptionCtors, enforce;
 
-import poet.context : Context, ContextException, next, ScopeID;
-import poet.instruction : Instruction;
+import poet.context : Context, ContextException, next, ScopeID, Variable;
+import poet.exception : UnmatchTypeException;
+import poet.instruction : CreateFunctionInstruction, Instruction;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
 import poet.value : IValue, Value;
@@ -31,9 +32,10 @@ final class DefineFunctionMode
         this.context_ = context;
         this.type_ = type;
         this.startScopeID_ = context.scopeID;
+        this.scopeID_ = context.lastScopeID.next;
 
         auto argumentValue = new ArgumentValue(type.argument);
-        context.pushScope(context.lastScopeID.next, argumentValue);
+        context.pushScope(scopeID_, argumentValue);
     }
 
     ///
@@ -59,25 +61,86 @@ final class DefineFunctionMode
 
     /**
     End definition.
+
+    Params:
+        result = result variable.
     */
-    void end()
+    void end()(auto scope ref const(Variable) result)
     {
         enforce!ModeConflictException(context_.beforeScopeID == startScopeID_);
+        enforce!UnmatchTypeException(getType(result).equals(type_.result));
 
         Instruction[] instructions;
         foreach (Value v; context_)
         {
+            // skip argument.
+            if (v.type.equals(ArgumentType.instance))
+            {
+                continue;
+            }
+
             immutable instructionValue = enforce!NotInstructionException(cast(InstructionValue) v);
             instructions ~= instructionValue.instruction;
         }
 
+        immutable createFunction = new CreateFunctionInstruction(type_, instructions, result, scopeID_);
         context_.popScope();
+        context_.push(new InstructionValue(type_, createFunction));
     }
 
+    ///
+    pure unittest
+    {
+        import poet.context : Variable, VariableIndex;
+        import poet.example : example;
+        import poet.fun : funType, FunctionValue;
+
+        immutable t = example();
+        immutable f = funType(t, t);
+
+        auto c = new Context();
+        auto df = new DefineFunctionMode(c, f);
+        df.end(Variable(ScopeID(1), VariableIndex.init));
+
+        immutable created = c.get(Variable(ScopeID.init, VariableIndex(1)));
+        assert(created.type.equals(InstructionType.instance));
+
+        immutable createdInstruction = cast(InstructionValue) created;
+        assert(createdInstruction.valueType.equals(f));
+
+        // execute created function.
+        createdInstruction.instruction.execute(c);
+        immutable fv = c.get(Variable(ScopeID.init, VariableIndex(2)));
+        assert(fv.type.equals(f));
+
+        immutable tv = t.createValue();
+        assert((cast(FunctionValue) fv).execute(tv) is tv);
+    }
+
+
 private:
+
+    Type getType()(auto scope ref const(Variable) v) pure scope
+    out (r; r !is null)
+    {
+        immutable value = context_.get(v);
+        if (value.type.equals(ArgumentType.instance))
+        {
+            return (cast(ArgumentValue) value).valueType;
+        }
+
+        if (value.type.equals(InstructionType.instance))
+        {
+            return (cast(InstructionValue) value).valueType;
+        }
+
+        return value.type;
+    }
+
     Context context_;
     FunctionType type_;
     ScopeID startScopeID_;
+    ScopeID scopeID_;
 }
 
 /**
