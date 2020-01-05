@@ -108,6 +108,7 @@ final class Context
 
         immutable newScope = new Scope(newScopeID, values_);
         this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
+        this.lastScopeID_ = newScopeID;
 
         return lastVariable;
     }
@@ -119,12 +120,14 @@ final class Context
         import poet.example : example;
 
         auto c = new Context();
-        auto v = example().createValue();
+        assert(c.lastScopeID == ScopeID(0));
 
         // invalid order scope ID.
+        auto v = example().createValue();
         assertThrown!InvalidScopeOrderException(c.pushScope(ScopeID(0), v));
 
         auto vv = c.pushScope(ScopeID(c.scopeID + 1), v);
+        assert(c.lastScopeID == ScopeID(1));
         assert(c.scopeID == ScopeID(1));
         assert(c.index == VariableIndex.init);
         assert(vv == Variable(ScopeID(1), VariableIndex.init));
@@ -151,9 +154,11 @@ final class Context
         auto c = new Context();
         auto v1 = example().createValue();
         auto vv1 = c.push(v1);
+        assert(c.lastScopeID == ScopeID(0));
 
         auto v2 = example().createValue();
         auto vv2 = c.pushScope(ScopeID(c.scopeID + 1), v2);
+        assert(c.lastScopeID == ScopeID(1));
 
         assert(c.get(vv1) is v1);
         assert(c.get(vv2) is v2);
@@ -161,6 +166,7 @@ final class Context
         c.popScope();
         assert(c.get(vv1) is v1);
         assert(c.getOrNull(vv2) is null);
+        assert(c.lastScopeID == ScopeID(1));
 
         assertThrown!CannotPopScopeException(c.popScope());
     }
