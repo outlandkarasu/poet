@@ -1,7 +1,7 @@
 /**
 Context module.
 */
-module poet.context2;
+module poet.context;
 
 import std.exception : basicExceptionCtors, enforce;
 import std.typecons :

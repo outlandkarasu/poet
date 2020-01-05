@@ -1,12 +1,13 @@
 /**
 Context mode module.
-*/
-module poet.mode;
+*/ module poet.mode;
 
-import poet.context2 : Context, next, ScopeID;
+import std.exception : basicExceptionCtors, enforce;
+
+import poet.context : Context, ContextException, next, ScopeID;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
-import poet.value : IValue;
+import poet.value : IValue, Value;
 
 @safe:
 
@@ -37,7 +38,7 @@ final class DefineFunctionMode
     ///
     pure unittest
     {
-        import poet.context2 : Variable, VariableIndex;
+        import poet.context : Variable, VariableIndex;
         import poet.example : example;
         import poet.fun : funType;
 
@@ -55,10 +56,43 @@ final class DefineFunctionMode
         assert(a.valueType.equals(t));
     }
 
+    /**
+    End definition.
+    */
+    void end()
+    {
+        enforce!ModeConflictException(context_.beforeScopeID == startScopeID_);
+
+        foreach (Value v; context_)
+        {
+            immutable i = enforce!NotInstructionException(cast(InstructionValue) v);
+        }
+
+        context_.popScope();
+    }
+
 private:
     Context context_;
     FunctionType type_;
     ScopeID startScopeID_;
+}
+
+/**
+Context mode unmatch scope ID exception.
+*/
+class ModeConflictException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Unexpected not instruction type exception.
+*/
+class NotInstructionException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
 }
 
 private:
@@ -128,4 +162,70 @@ nothrow pure unittest
 }
 
 alias ArgumentValue = immutable(CArgumentValue);
+
+final immutable class CInstructionType : IType
+{
+    override bool equals(scope Type other) @nogc nothrow pure scope
+    {
+        return other is this;
+    }
+
+    static @property immutable(CInstructionType) instance() @nogc nothrow pure
+    out (r; r !is null)
+    {
+        return instance_;
+    }
+
+private:
+    static immutable(CInstructionType) instance_ = new immutable CInstructionType();
+}
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+
+    assert(InstructionType.instance.equals(InstructionType.instance));
+    assert(!InstructionType.instance.equals(example()));
+}
+
+alias InstructionType = immutable(CInstructionType);
+
+final immutable class CInstructionValue : IValue
+{
+    this(Type valueType) @nogc nothrow pure scope
+    in (valueType !is null)
+    {
+        this.valueType_ = valueType;
+    }
+
+    @property @nogc nothrow pure scope
+    {
+        override Type type()
+        {
+            return InstructionType.instance;
+        }
+
+        Type valueType()
+        {
+            return valueType_;
+        }
+    }
+
+private:
+    Type valueType_;
+}
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+
+    immutable t = example();
+    immutable v = new InstructionValue(t);
+    assert(v.type.equals(InstructionType.instance));
+    assert(v.valueType.equals(t));
+}
+
+alias InstructionValue = immutable(CInstructionValue);
 
