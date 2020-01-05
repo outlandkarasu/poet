@@ -34,6 +34,27 @@ final class DefineFunctionMode
         context.pushScope(context.lastScopeID.next, argumentValue);
     }
 
+    ///
+    pure unittest
+    {
+        import poet.context2 : Variable, VariableIndex;
+        import poet.example : example;
+        import poet.fun : funType;
+
+        immutable t = example();
+        immutable u = example();
+        immutable f = funType(t, u);
+
+        auto c = new Context();
+        auto df = new DefineFunctionMode(c, f);
+        assert(c.lastScopeID == ScopeID(1));
+        assert(c.scopeID == ScopeID(1));
+
+        immutable a = cast(ArgumentValue) c.get(Variable(ScopeID(1), VariableIndex.init));
+        assert(a.type.equals(ArgumentType.instance));
+        assert(a.valueType.equals(t));
+    }
+
 private:
     Context context_;
     FunctionType type_;
