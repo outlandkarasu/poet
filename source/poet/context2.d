@@ -66,6 +66,11 @@ final class Context
             return currentScope.id;
         }
 
+        ScopeID lastScopeID() @nogc scope
+        {
+            return lastScopeID_;
+        }
+
         ///
         unittest
         {
@@ -94,12 +99,12 @@ final class Context
         value = pushing value
     Returns:
         pushed value variable.
-    Throws: InvalidScopeOrderException if new scope ID less than or equals current scope ID.
+    Throws: InvalidScopeOrderException if new scope ID less than or equals last scope ID.
     */
     Variable pushScope(ScopeID newScopeID, Value value) pure scope
     in (value !is null)
     {
-        enforce!InvalidScopeOrderException(scopeID < newScopeID);
+        enforce!InvalidScopeOrderException(lastScopeID < newScopeID);
 
         immutable newScope = new Scope(newScopeID, values_);
         this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
@@ -317,6 +322,7 @@ final class Context
 
 private:
     Rebindable!(List!ContextEntry) values_;
+    ScopeID lastScopeID_;
 
     @property const @nogc nothrow pure scope
     {
