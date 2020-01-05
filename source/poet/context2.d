@@ -24,6 +24,27 @@ Context variable index.
 alias VariableIndex = Typedef!(size_t, size_t.init, "VariableIndex");
 
 /**
+get next scope ID.
+
+Params:
+    id = base scope ID.
+Returns:
+    next scope ID.
+*/
+ScopeID next(ScopeID id) @nogc nothrow pure
+{
+    return ScopeID(id + 1);
+}
+
+///
+@nogc nothrow pure unittest
+{
+    auto id = ScopeID(1);
+    assert(id.next == ScopeID(2));
+    assert(id.next.next == ScopeID(3));
+}
+
+/**
 Context variable.
 */
 struct Variable
@@ -126,7 +147,7 @@ final class Context
         auto v = example().createValue();
         assertThrown!InvalidScopeOrderException(c.pushScope(ScopeID(0), v));
 
-        auto vv = c.pushScope(ScopeID(c.scopeID + 1), v);
+        auto vv = c.pushScope(c.scopeID.next, v);
         assert(c.lastScopeID == ScopeID(1));
         assert(c.scopeID == ScopeID(1));
         assert(c.index == VariableIndex.init);
@@ -157,7 +178,7 @@ final class Context
         assert(c.lastScopeID == ScopeID(0));
 
         auto v2 = example().createValue();
-        auto vv2 = c.pushScope(ScopeID(c.scopeID + 1), v2);
+        auto vv2 = c.pushScope(c.scopeID.next, v2);
         assert(c.lastScopeID == ScopeID(1));
 
         assert(c.get(vv1) is v1);

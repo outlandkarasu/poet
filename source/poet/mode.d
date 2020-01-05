@@ -3,7 +3,7 @@ Context mode module.
 */
 module poet.mode;
 
-import poet.context2 : Context, ScopeID;
+import poet.context2 : Context, next, ScopeID;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
 import poet.value : IValue;
@@ -16,17 +16,22 @@ Function defintion mode.
 final class DefineFunctionMode
 {
     /**
+    start definition by context and function type.
+
     Params:
         context = definition context
         type = function type
     */
-    this(Context context, FunctionType type) @nogc nothrow pure scope
+    this(Context context, FunctionType type) pure scope
     in (context !is null)
     in (type !is null)
     {
         this.context_ = context;
         this.type_ = type;
         this.startScopeID_ = context.scopeID;
+
+        auto argumentValue = new ArgumentValue(type.argument);
+        context.pushScope(context.lastScopeID.next, argumentValue);
     }
 
 private:
