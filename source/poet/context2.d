@@ -127,6 +127,40 @@ final class Context
     }
 
     /**
+    Pop current scope.
+
+    Throws: InvalidScopeOrderException if new scope ID less than or equals current scope ID.
+    */
+    void popScope() pure scope
+    {
+        enforce!CannotPopScopeException(currentScope.before);
+        values_ = currentScope.before;
+    }
+
+    ///
+    pure unittest
+    {
+        import std.exception : assertThrown;
+        import poet.example : example;
+
+        auto c = new Context();
+        auto v1 = example().createValue();
+        auto vv1 = c.push(v1);
+
+        auto v2 = example().createValue();
+        auto vv2 = c.pushScope(ScopeID(c.scopeID + 1), v2);
+
+        assert(c.get(vv1) is v1);
+        assert(c.get(vv2) is v2);
+
+        c.popScope();
+        assert(c.get(vv1) is v1);
+        assert(c.getOrNull(vv2) is null);
+
+        assertThrown!CannotPopScopeException(c.popScope());
+    }
+
+    /**
     Push a value to current scope.
 
     Params:
@@ -347,6 +381,15 @@ class VariableNotFoundException : ContextException
 Invalid scope order exception.
 */
 class InvalidScopeOrderException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Cannot pop scope exception.
+*/
+class CannotPopScopeException : ContextException
 {
     ///
     mixin basicExceptionCtors;
