@@ -60,7 +60,7 @@ final immutable class CFunctionValue : IValue
     out (r; r !is null && r.type.equals(type_.result))
     {
         enforce!UnmatchTypeException(argument.type.equals(type_.argument));
-        auto c = new Context(startPoint_);
+        scope c = new Context(startPoint_);
         c.pushScope(scopeID_, argument);
 
         foreach (i; instructions_)
