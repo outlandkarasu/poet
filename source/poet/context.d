@@ -59,6 +59,25 @@ private:
 }
 
 /**
+Context saved point.
+*/
+struct SavePoint
+{
+    @disable this();
+
+private:
+    List!ContextEntry values;
+    ScopeID lastScopeID;
+
+    this(scope const(Context) context) @nogc nothrow pure scope
+    in (context !is null)
+    {
+        this.values = context.values_;
+        this.lastScopeID = context.lastScopeID_;
+    }
+}
+
+/**
 Value context.
 */
 final class Context
@@ -70,6 +89,18 @@ final class Context
     {
         immutable rootScope = new Scope(ScopeID.init, null);
         this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
+    }
+
+    /**
+    construct with saved point.
+
+    Params:
+        savePoint = saved point.
+    */
+    this(SavePoint savePoint) @nogc nothrow pure scope
+    {
+        this.values_ = savePoint.values;
+        this.lastScopeID_ = savePoint.lastScopeID;
     }
 
     @property const pure
@@ -148,6 +179,34 @@ final class Context
         {
             auto c = new Context();
             assert(c.lastVariable == Variable(c.scopeID, VariableIndex.init));
+        }
+
+        SavePoint save() @nogc nothrow scope
+        {
+            return SavePoint(this);
+        }
+
+        ///
+        unittest
+        {
+            import poet.example : example;
+
+            auto c = new Context();
+            auto savePoint = c.save;
+
+            immutable v = example().createValue();
+            immutable vv = c.pushScope(c.lastScopeID.next, v);
+            assert(c.scopeID == ScopeID(1));
+            assert(c.lastScopeID == ScopeID(1));
+            assert(c.get(vv) is v);
+
+            auto restored = new Context(savePoint);
+            assert(restored.scopeID == ScopeID.init);
+            assert(restored.getOrNull(vv) is null);
+
+            immutable v2 = example().createValue();
+            immutable vv2 = restored.pushScope(restored.lastScopeID.next, v2);
+            assert(restored.get(vv2) is v2);
         }
     }
 
