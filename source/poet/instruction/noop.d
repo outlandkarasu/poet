@@ -1,28 +1,12 @@
 /**
-Instruction module.
+No operation Instruction module.
 */
-module poet.instruction;
+module poet.instruction.noop;
 
 import poet.context : Context;
+import poet.instruction.instruction : IInstruction;
 
 @safe:
-
-/**
-Instruction module.
-*/
-immutable interface IInstruction
-{
-    /**
-    Execute instruction.
-
-    Params:
-        context = target context.
-    */
-    void execute(scope Context context) pure scope
-    in (context !is null);
-}
-
-alias Instruction = immutable(IInstruction);
 
 /**
 No operation instruction.
