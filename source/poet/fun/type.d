@@ -1,7 +1,7 @@
 /**
 Function type module.
 */
-module poet.fun;
+module poet.fun.type;
 
 import poet.type : IType, Type;
 
@@ -177,3 +177,4 @@ nothrow pure unittest
     assert(!f.isMatchArguments(t, u, v));
     assert(!f.isMatchArguments());
 }
+
