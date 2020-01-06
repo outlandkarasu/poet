@@ -1,6 +1,7 @@
 /**
-Context mode module.
-*/ module poet.mode;
+Define function mode module.
+*/
+module poet.mode.define_function;
 
 import std.exception : basicExceptionCtors, enforce;
 
