@@ -64,8 +64,12 @@ final class DefineFunctionMode
 
     Params:
         result = result variable.
+    Returns:
+        create function instruction variable.
     */
-    void end()(auto scope ref const(Variable) result)
+    Variable end()(auto scope ref const(Variable) result)
+    out (r; getType(r).equals(type_))
+    out (r; context_.get(r).type.equals(InstructionType.instance))
     {
         enforce!ModeConflictException(context_.beforeScopeID == startScopeID_);
         enforce!UnmatchTypeException(getType(result).equals(type_.result));
@@ -85,7 +89,7 @@ final class DefineFunctionMode
 
         immutable createFunction = new CreateFunctionInstruction(type_, instructions, result, scopeID_);
         context_.popScope();
-        context_.push(new InstructionValue(type_, createFunction));
+        return context_.push(new InstructionValue(type_, createFunction));
     }
 
     ///
@@ -100,9 +104,9 @@ final class DefineFunctionMode
 
         auto c = new Context();
         auto df = new DefineFunctionMode(c, f);
-        df.end(Variable(ScopeID(1), VariableIndex.init));
+        auto createdVariable = df.end(Variable(ScopeID(1), VariableIndex.init));
 
-        immutable created = c.get(Variable(ScopeID.init, VariableIndex(1)));
+        immutable created = c.get(createdVariable);
         assert(created.type.equals(InstructionType.instance));
 
         immutable createdInstruction = cast(InstructionValue) created;
