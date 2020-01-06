@@ -171,7 +171,7 @@ final class Context
 
         Variable lastVariable() @nogc nothrow scope
         {
-            return Variable(scopeID, values_.head.index);
+            return Variable(scopeID, index);
         }
 
         ///

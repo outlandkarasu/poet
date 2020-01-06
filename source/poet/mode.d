@@ -65,11 +65,11 @@ final class DefineFunctionMode
     Params:
         result = result variable.
     Returns:
-        create function instruction variable.
+        create function instruction value.
     */
-    Variable end()(auto scope ref const(Variable) result)
-    out (r; getType(r).equals(type_))
-    out (r; context_.get(r).type.equals(InstructionType.instance))
+    InstructionValue end()(auto scope ref const(Variable) result)
+    out (r; r !is null)
+    out (r; r.valueType.equals(type_))
     {
         enforce!ModeConflictException(context_.beforeScopeID == startScopeID_);
         enforce!UnmatchTypeException(getType(result).equals(type_.result));
@@ -87,9 +87,14 @@ final class DefineFunctionMode
             instructions ~= instructionValue.instruction;
         }
 
+        // create a function constructor.
         immutable createFunction = new CreateFunctionInstruction(type_, instructions, result, scopeID_);
+        immutable createFunctionValue = new InstructionValue(type_, createFunction);
+
+        // close definition scope.
         context_.popScope();
-        return context_.push(new InstructionValue(type_, createFunction));
+
+        return createFunctionValue;
     }
 
     ///
@@ -104,16 +109,55 @@ final class DefineFunctionMode
 
         auto c = new Context();
         auto df = new DefineFunctionMode(c, f);
-        auto createdVariable = df.end(Variable(ScopeID(1), VariableIndex.init));
-
-        immutable created = c.get(createdVariable);
-        assert(created.type.equals(InstructionType.instance));
-
-        immutable createdInstruction = cast(InstructionValue) created;
-        assert(createdInstruction.valueType.equals(f));
+        immutable createFunction = df.end(Variable(ScopeID(1), VariableIndex.init));
+        assert(createFunction.valueType.equals(f));
+        assert(c.scopeID == ScopeID.init);
+        assert(c.lastScopeID == ScopeID(1));
 
         // execute created function.
-        createdInstruction.instruction.execute(c);
+        createFunction.instruction.execute(c);
+        immutable fv = c.get(Variable(ScopeID.init, VariableIndex(1)));
+        assert(fv.type.equals(f));
+
+        immutable tv = t.createValue();
+        assert((cast(FunctionValue) fv).execute(tv) is tv);
+    }
+
+    /**
+    End definition and push instruction.
+
+    Params:
+        result = result variable.
+    Returns:
+        create function instruction variable.
+    */
+    Variable endAndPush()(auto scope ref const(Variable) result)
+    out (r; getType(r).equals(type_))
+    out (r; context_.get(r).type.equals(InstructionType.instance))
+    {
+        immutable createFunctionValue = end(result);
+        return context_.push(createFunctionValue);
+    }
+
+    ///
+    pure unittest
+    {
+        import poet.context : Variable, VariableIndex;
+        import poet.example : example;
+        import poet.fun : funType, FunctionValue;
+
+        immutable t = example();
+        immutable f = funType(t, t);
+
+        auto c = new Context();
+        auto df = new DefineFunctionMode(c, f);
+        immutable createFunctionVariable = df.endAndPush(Variable(ScopeID(1), VariableIndex.init));
+        immutable result = cast(InstructionValue) c.get(createFunctionVariable);
+        assert(result !is null);
+        assert(result.valueType.equals(f));
+
+        // execute created function.
+        result.instruction.execute(c);
         immutable fv = c.get(Variable(ScopeID.init, VariableIndex(2)));
         assert(fv.type.equals(f));
 
@@ -121,6 +165,44 @@ final class DefineFunctionMode
         assert((cast(FunctionValue) fv).execute(tv) is tv);
     }
 
+    /**
+    End definition and create function.
+
+    Params:
+        result = result variable.
+    Returns:
+        created function variable.
+    */
+    Variable endAndCreate()(auto scope ref const(Variable) result)
+    out (r; getType(r).equals(type_))
+    out (r; context_.get(r).type.equals(type_))
+    {
+        immutable createFunctionValue = end(result);
+        createFunctionValue.instruction.execute(context_);
+        return context_.lastVariable;
+    }
+
+    ///
+    pure unittest
+    {
+        import poet.context : Variable, VariableIndex;
+        import poet.example : example;
+        import poet.fun : funType, FunctionValue;
+
+        immutable t = example();
+        immutable f = funType(t, t);
+
+        auto c = new Context();
+        auto df = new DefineFunctionMode(c, f);
+        immutable functionVariable = df.endAndCreate(Variable(ScopeID(1), VariableIndex.init));
+        immutable result = cast(FunctionValue) c.get(functionVariable);
+        assert(result !is null);
+        assert(result.type.equals(f));
+
+        // execute created function.
+        immutable tv = t.createValue();
+        assert(result.execute(tv) is tv);
+    }
 
 private:
 
