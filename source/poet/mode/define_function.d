@@ -7,7 +7,10 @@ import std.exception : basicExceptionCtors, enforce;
 
 import poet.context : Context, ContextException, next, ScopeID, Variable;
 import poet.exception : UnmatchTypeException;
-import poet.instruction : CreateFunctionInstruction, Instruction;
+import poet.instruction :
+    ApplyFunctionInstruction,
+    CreateFunctionInstruction,
+    Instruction;
 import poet.fun : FunctionType;
 import poet.type : IType, Type;
 import poet.value : IValue, Value;
@@ -59,6 +62,47 @@ final class DefineFunctionMode
         assert(a.type.equals(ArgumentType.instance));
         assert(a.valueType.equals(t));
     }
+
+    /**
+    Apply function.
+
+    Params:
+        f = function variable.
+        a = argument variable.
+    Returns:
+        result variable.
+    */
+    Variable apply()(auto scope ref const(Variable) f, auto scope ref const(Variable) a)
+    out (r; getType(r).equals((cast(FunctionType) getType(f)).result))
+    {
+        immutable functionType = enforce!NotFunctionException(cast(FunctionType) getType(f));
+        enforce!UnmatchTypeException(functionType.argument.equals(getType(a)));
+
+        immutable applyFunction = new ApplyFunctionInstruction(f, a);
+        immutable applyFunctionValue = new InstructionValue(functionType.result, applyFunction);
+        return context_.push(applyFunctionValue);
+    }
+
+    ///
+    pure unittest
+    {
+        import poet.context : Variable, VariableIndex;
+        import poet.example : example;
+        import poet.fun : funType;
+
+        immutable t = example();
+        immutable u = example();
+        immutable f1 = funType(t, u);
+        immutable f2 = funType(f1, u);
+
+        auto c = new Context();
+        immutable tv = c.push(t.createValue());
+        auto df = new DefineFunctionMode(c, f2);
+        immutable rv = df.apply(c.lastVariable, tv);
+        assert(c.get(rv).type.equals(InstructionType.instance));
+        assert((cast(InstructionValue) c.get(rv)).valueType.equals(u));
+    }
+
 
     /**
     End definition.
@@ -243,6 +287,15 @@ class ModeConflictException : ContextException
 Unexpected not instruction type exception.
 */
 class NotInstructionException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
+/**
+Unexpected not function type exception.
+*/
+class NotFunctionException : ContextException
 {
     ///
     mixin basicExceptionCtors;
