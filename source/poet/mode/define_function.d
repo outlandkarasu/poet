@@ -274,6 +274,53 @@ private:
     ScopeID scopeID_;
 }
 
+///
+pure unittest
+{
+    import poet.context : Variable, VariableIndex;
+    import poet.example : example;
+    import poet.fun : funType, FunctionValue;
+
+    immutable x = example();
+    immutable y = example();
+    immutable z = example();
+
+    immutable xy = funType(x, y);
+    immutable yz = funType(y, z);
+    immutable xz = funType(x, z);
+    immutable f = funType(xy, yz, xz);
+
+    // start definition (X -> Y) -> (Y -> Z) -> (X -> Z)
+    auto c = new Context();
+
+    // introduce (X -> Y), target (Y -> Z) -> (X -> Z)
+    auto defXYYZXZ = new DefineFunctionMode(c, f);
+      auto varXY = c.lastVariable;
+
+      // introduce (Y -> Z), target (X -> Z)
+      auto defYZXZ = new DefineFunctionMode(c, funType(yz, xz));
+        auto varYZ = c.lastVariable;
+
+        // introduce X, target Z
+        auto defXZ = new DefineFunctionMode(c, xz);
+          auto varX = c.lastVariable;
+
+          // (X -> Y) x
+          auto resultY = defXZ.apply(varXY, varX);
+
+          // (Y -> Z) y
+          auto resultZ = defXZ.apply(varYZ, resultY);
+        auto resultXZ = defXZ.endAndPush(resultZ);
+      auto resultYZXZ = defYZXZ.endAndPush(resultXZ);
+
+    // create target function value.
+    auto result = defXYYZXZ.endAndCreate(resultYZXZ);
+    immutable functionValue = cast(FunctionValue) c.get(result);
+
+    assert(functionValue !is null);
+    assert(functionValue.type.equals(f));
+}
+
 /**
 Context mode unmatch scope ID exception.
 */
