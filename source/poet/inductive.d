@@ -55,11 +55,10 @@ final immutable class CInductiveType : IType
     */
     this(scope Type[][] constructors) nothrow pure scope
     {
-        this.constructors_ = constructors.map!(
-            (c) => new InductiveConstructor(
-                c.map!((t) => t.equals(SELF) ? this : t).array
-            )
-        ).array;
+        this.constructors_ = constructors
+            .map!((c) => c.map!((t) => t.isSelfType ? this : t).array)
+            .map!((c) => new InductiveConstructor(c))
+            .array;
     }
 
     override bool equals(scope Type other) @nogc nothrow pure scope
@@ -74,6 +73,22 @@ final immutable class CInductiveType : IType
 
 private:
     InductiveConstructor[] constructors_;
+}
+
+///
+pure unittest
+{
+    import poet.example : example;
+
+    immutable t = cast(Type) example();
+    immutable u = cast(Type) example();
+    immutable v = cast(Type) example();
+    immutable inductiveType = new InductiveType([[], [t], [t, u, v], [SELF_TYPE]]);
+    assert(inductiveType.constructors.length == 4);
+    assert(inductiveType.constructors[0].argumentTypes.length == 0);
+    assert(inductiveType.constructors[1].argumentTypes == [t]);
+    assert(inductiveType.constructors[2].argumentTypes == [t, u, v]);
+    assert(inductiveType.constructors[3].argumentTypes == [cast(Type) inductiveType]);
 }
 
 alias InductiveType = immutable(CInductiveType);
@@ -172,7 +187,18 @@ pure unittest
 /**
 Self type indicator.
 */
-immutable SELF = new InductiveSelfType();
+Type SELF_TYPE = new InductiveSelfType();
+
+/**
+Params:
+    t = check type.
+Returns:
+    true if t is self type.
+*/
+bool isSelfType(scope Type t) @nogc nothrow pure
+{
+    return SELF_TYPE.equals(t);
+}
 
 private:
 
