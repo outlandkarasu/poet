@@ -1,7 +1,7 @@
 /**
 Inductive type module.
 */
-module poet.inductive;
+module poet.inductive.inductive;
 
 import std.algorithm : equal, map;
 import std.exception : enforce;
