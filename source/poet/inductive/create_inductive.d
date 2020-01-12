@@ -1,13 +1,14 @@
 /**
 Create inductive instruction.
 */
-module poet.instruction.create_inductive;
+module poet.inductive.create_inductive;
 
 import std.algorithm : map;
 import std.range : array;
 
 import poet.context : Context, Variable;
-import poet.inductive : InductiveIndex, InductiveType, InductiveValue;
+import poet.inductive.type : InductiveIndex, InductiveType;
+import poet.inductive.value : InductiveValue;
 import poet.instruction : IInstruction;
 
 @safe:
