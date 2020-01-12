@@ -50,7 +50,7 @@ final immutable class CInductiveType : IType
     Params:
         constructors = inductive constructors.
     */
-    this(scope Type[][] constructors) nothrow pure scope
+    this(scope Type[][] constructors...) nothrow pure scope
     {
         this.constructors_ = constructors
             .map!((c) => c.map!((t) => t.isSelfType ? this : t).array)
@@ -80,7 +80,7 @@ pure unittest
     immutable t = cast(Type) example();
     immutable u = cast(Type) example();
     immutable v = cast(Type) example();
-    immutable inductiveType = new InductiveType([[], [t], [t, u, v], [SELF_TYPE]]);
+    immutable inductiveType = new InductiveType([], [t], [t, u, v], [SELF_TYPE]);
     assert(inductiveType.constructors.length == 4);
     assert(inductiveType.constructors[0].argumentTypes.length == 0);
     assert(inductiveType.constructors[1].argumentTypes == [t]);

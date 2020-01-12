@@ -58,7 +58,7 @@ pure unittest
     import poet.example : example;
 
     immutable et = example();
-    immutable t = new InductiveType([[et]]);
+    immutable t = new InductiveType([et]);
 
     auto c = new Context();
     auto v = et.createValue();
