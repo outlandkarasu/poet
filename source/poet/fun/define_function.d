@@ -1,17 +1,16 @@
 /**
 Define function mode module.
 */
-module poet.mode.define_function;
+module poet.fun.define_function;
 
 import std.exception : basicExceptionCtors, enforce;
 
 import poet.context : Context, ContextException, next, ScopeID, Variable;
 import poet.exception : UnmatchTypeException;
-import poet.instruction :
-    ApplyFunctionInstruction,
-    CreateFunctionInstruction,
-    Instruction;
-import poet.fun : FunctionType;
+import poet.fun.apply_function : ApplyFunctionInstruction;
+import poet.fun.create_function : CreateFunctionInstruction;
+import poet.fun.type : FunctionType;
+import poet.instruction : Instruction;
 import poet.type : IType, Type;
 import poet.value : IValue, Value;
 

@@ -1,10 +1,11 @@
 /**
 Create function instruction module.
 */
-module poet.instruction.create_function;
+module poet.fun.create_function;
 
 import poet.context : Context, ScopeID, Variable;
-import poet.fun : FunctionType, FunctionValue;
+import poet.fun.type : FunctionType;
+import poet.fun.value : FunctionValue;
 import poet.instruction.instruction : Instruction, IInstruction;
 
 @safe:
