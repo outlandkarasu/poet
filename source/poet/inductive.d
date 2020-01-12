@@ -5,6 +5,7 @@ module poet.inductive;
 
 import std.algorithm : equal, map;
 import std.exception : enforce;
+import std.range : array;
 import std.typecons : Typedef;
 
 import poet.exception : UnmatchTypeException;
@@ -23,16 +24,6 @@ Inductive constructor.
 */
 final immutable class CInductiveConstructor
 {
-    /**
-    Params:
-        argumentTypes = constructor arguments.
-    */
-    this(Type[] argumentTypes) @nogc nothrow pure scope
-    out (r; r.argumentTypes is argumentTypes)
-    {
-        this.argumentTypes_ = argumentTypes;
-    }
-
     @property @nogc nothrow pure scope
     {
         Type[] argumentTypes()
@@ -43,6 +34,12 @@ final immutable class CInductiveConstructor
 
 private:
     Type[] argumentTypes_;
+
+    this(Type[] argumentTypes) @nogc nothrow pure scope
+    out (r; r.argumentTypes is argumentTypes)
+    {
+        this.argumentTypes_ = argumentTypes;
+    }
 }
 
 alias InductiveConstructor = immutable(CInductiveConstructor);
@@ -56,10 +53,13 @@ final immutable class CInductiveType : IType
     Params:
         constructors = inductive constructors.
     */
-    this(InductiveConstructor[] constructors) @nogc nothrow pure scope
-    out (r; r.constructors is constructors)
+    this(scope Type[][] constructors) nothrow pure scope
     {
-        this.constructors_ = constructors;
+        this.constructors_ = constructors.map!(
+            (c) => new InductiveConstructor(
+                c.map!((t) => t.equals(SELF) ? this : t).array
+            )
+        ).array;
     }
 
     override bool equals(scope Type other) @nogc nothrow pure scope
@@ -154,8 +154,7 @@ pure unittest
     import poet.example : example;
 
     immutable et = example();
-    immutable c1 = new InductiveConstructor([et]);
-    immutable t = new InductiveType([c1]);
+    immutable t = new InductiveType([[et]]);
 
     immutable etv = et.createValue();
     immutable values = [cast(Value) etv];
@@ -169,4 +168,24 @@ pure unittest
     immutable unmatchValues = [cast(Value) example().createValue()];
     assertThrown!UnmatchTypeException(InductiveValue.create(t, InductiveIndex(0), unmatchValues));
 }
+
+/**
+Self type indicator.
+*/
+immutable SELF = new InductiveSelfType();
+
+private:
+
+/**
+Inductive self type.
+*/
+final immutable class CInductiveSelfType : IType
+{
+    bool equals(scope Type other) @nogc nothrow pure scope
+    {
+        return this is other;
+    }
+}
+
+alias InductiveSelfType = immutable(CInductiveSelfType);
 
