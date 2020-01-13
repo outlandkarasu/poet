@@ -68,19 +68,20 @@ private:
 Create function type.
 
 Params:
-    a = argument type.
-    b = argument or result type.
     types = arguments and result.
 Returns:
     new function type.
 */
-FunctionType funType(Type a, Type b, scope Type[] types ...) nothrow pure
-in (a !is null)
-in (b !is null)
+FunctionType funType(scope Type[] types ...) nothrow pure
+in (types.length >= 2)
 out (r; r !is null)
 {
-    immutable r = (types.length == 0) ? b : funType(b, types[0], types[1 .. $]);
-    return new FunctionType(a, r);
+    if (types.length == 2)
+    {
+        return new FunctionType(types[0], types[1]);
+    }
+
+    return new FunctionType(types[0], funType(types[1 .. $]));
 }
 
 ///

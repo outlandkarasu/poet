@@ -4,9 +4,10 @@ Create inductive instruction.
 module poet.inductive.create_inductive;
 
 import std.algorithm : map;
-import std.range : array;
+import std.range : array, enumerate;
 
 import poet.context : Context, Variable;
+import poet.fun : DefineFunctionMode;
 import poet.inductive.type : InductiveIndex, InductiveType;
 import poet.inductive.value : InductiveValue;
 import poet.instruction : IInstruction;
@@ -32,8 +33,7 @@ final immutable class CCreateInductiveInstruction : IInstruction
     in (type.constructors[cast(size_t) index].argumentTypes.length == variables.length)
     {
         this.type_ = type;
-        this.index_ = index;
-        this.variables_ = variables;
+        this.index_ = index; this.variables_ = variables;
     }
 
     override void execute(scope Context context) pure scope

@@ -78,8 +78,7 @@ final class DefineFunctionMode
         enforce!UnmatchTypeException(functionType.argument.equals(getType(a)));
 
         immutable applyFunction = new ApplyFunctionInstruction(f, a);
-        immutable applyFunctionValue = new InstructionValue(functionType.result, applyFunction);
-        return context_.push(applyFunctionValue);
+        return pushInstruction(functionType.result, applyFunction);
     }
 
     ///
@@ -102,6 +101,20 @@ final class DefineFunctionMode
         assert((cast(InstructionValue) c.get(rv)).valueType.equals(u));
     }
 
+    /**
+    Push instruction.
+
+    Params:
+        resultType = instruction result type.
+        instruction = pushing instruction.
+    Returns:
+        result variable.
+    */
+    Variable pushInstruction()(Type resultType, Instruction instruction)
+    out (r; getType(r).equals(resultType))
+    {
+        return context_.push(new InstructionValue(resultType, instruction));
+    }
 
     /**
     End definition.
