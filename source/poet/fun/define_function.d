@@ -1,17 +1,16 @@
 /**
 Define function mode module.
 */
-module poet.mode.define_function;
+module poet.fun.define_function;
 
 import std.exception : basicExceptionCtors, enforce;
 
 import poet.context : Context, ContextException, next, ScopeID, Variable;
 import poet.exception : UnmatchTypeException;
-import poet.instruction :
-    ApplyFunctionInstruction,
-    CreateFunctionInstruction,
-    Instruction;
-import poet.fun : FunctionType;
+import poet.fun.apply_function : ApplyFunctionInstruction;
+import poet.fun.create_function : CreateFunctionInstruction;
+import poet.fun.type : FunctionType;
+import poet.instruction : Instruction;
 import poet.type : IType, Type;
 import poet.value : IValue, Value;
 
@@ -79,8 +78,7 @@ final class DefineFunctionMode
         enforce!UnmatchTypeException(functionType.argument.equals(getType(a)));
 
         immutable applyFunction = new ApplyFunctionInstruction(f, a);
-        immutable applyFunctionValue = new InstructionValue(functionType.result, applyFunction);
-        return context_.push(applyFunctionValue);
+        return pushInstruction(functionType.result, applyFunction);
     }
 
     ///
@@ -103,6 +101,20 @@ final class DefineFunctionMode
         assert((cast(InstructionValue) c.get(rv)).valueType.equals(u));
     }
 
+    /**
+    Push instruction.
+
+    Params:
+        resultType = instruction result type.
+        instruction = pushing instruction.
+    Returns:
+        result variable.
+    */
+    Variable pushInstruction()(Type resultType, Instruction instruction)
+    out (r; getType(r).equals(resultType))
+    {
+        return context_.push(new InstructionValue(resultType, instruction));
+    }
 
     /**
     End definition.

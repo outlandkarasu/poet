@@ -1,82 +1,16 @@
 /**
-Inductive type module.
+Inductive value module.
 */
-module poet.inductive;
+module poet.inductive.value;
 
 import std.algorithm : equal, map;
 import std.exception : enforce;
-import std.typecons : Typedef;
 
 import poet.exception : UnmatchTypeException;
-import poet.type : IType, Type;
+import poet.inductive.type : InductiveIndex, InductiveType;
 import poet.value: IValue, Value;
 
 @safe:
-
-/**
-Inductive value constructor index.
-*/
-alias InductiveIndex = Typedef!(size_t, size_t.init, "InductiveIndex");
-
-/**
-Inductive constructor.
-*/
-final immutable class CInductiveConstructor
-{
-    /**
-    Params:
-        argumentTypes = constructor arguments.
-    */
-    this(Type[] argumentTypes) @nogc nothrow pure scope
-    out (r; r.argumentTypes is argumentTypes)
-    {
-        this.argumentTypes_ = argumentTypes;
-    }
-
-    @property @nogc nothrow pure scope
-    {
-        Type[] argumentTypes()
-        {
-            return argumentTypes_;
-        }
-    }
-
-private:
-    Type[] argumentTypes_;
-}
-
-alias InductiveConstructor = immutable(CInductiveConstructor);
-
-/**
-Inductive type.
-*/
-final immutable class CInductiveType : IType
-{
-    /**
-    Params:
-        constructors = inductive constructors.
-    */
-    this(InductiveConstructor[] constructors) @nogc nothrow pure scope
-    out (r; r.constructors is constructors)
-    {
-        this.constructors_ = constructors;
-    }
-
-    override bool equals(scope Type other) @nogc nothrow pure scope
-    {
-        return this is other;
-    }
-
-    @property InductiveConstructor[] constructors() @nogc nothrow pure scope
-    {
-        return constructors_;
-    }
-
-private:
-    InductiveConstructor[] constructors_;
-}
-
-alias InductiveType = immutable(CInductiveType);
 
 /**
 Inductive value.
@@ -154,8 +88,7 @@ pure unittest
     import poet.example : example;
 
     immutable et = example();
-    immutable c1 = new InductiveConstructor([et]);
-    immutable t = new InductiveType([c1]);
+    immutable t = new InductiveType([[et]]);
 
     immutable etv = et.createValue();
     immutable values = [cast(Value) etv];

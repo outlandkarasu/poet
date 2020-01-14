@@ -1,13 +1,15 @@
 /**
 Create inductive instruction.
 */
-module poet.instruction.create_inductive;
+module poet.inductive.create_inductive;
 
 import std.algorithm : map;
-import std.range : array;
+import std.range : array, enumerate;
 
 import poet.context : Context, Variable;
-import poet.inductive : InductiveIndex, InductiveType, InductiveValue;
+import poet.fun : DefineFunctionMode;
+import poet.inductive.type : InductiveIndex, InductiveType;
+import poet.inductive.value : InductiveValue;
 import poet.instruction : IInstruction;
 
 @safe:
@@ -31,8 +33,7 @@ final immutable class CCreateInductiveInstruction : IInstruction
     in (type.constructors[cast(size_t) index].argumentTypes.length == variables.length)
     {
         this.type_ = type;
-        this.index_ = index;
-        this.variables_ = variables;
+        this.index_ = index; this.variables_ = variables;
     }
 
     override void execute(scope Context context) pure scope
@@ -57,8 +58,7 @@ pure unittest
     import poet.example : example;
 
     immutable et = example();
-    immutable c1 = new InductiveConstructor([et]);
-    immutable t = new InductiveType([c1]);
+    immutable t = new InductiveType([et]);
 
     auto c = new Context();
     auto v = et.createValue();

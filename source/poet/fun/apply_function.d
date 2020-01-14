@@ -1,13 +1,14 @@
 /**
 Apply function instruction module.
 */
-module poet.instruction.apply_function;
+module poet.fun.apply_function;
 
 import std.exception : enforce;
 
 import poet.context : Context, Variable;
 import poet.exception : UnmatchTypeException;
-import poet.fun : FunctionType, FunctionValue;
+import poet.fun.type : FunctionType;
+import poet.fun.value : FunctionValue;
 import poet.instruction.instruction : Instruction, IInstruction;
 
 @safe:
