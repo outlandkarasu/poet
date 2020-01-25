@@ -1,16 +1,17 @@
 /**
-Fixpoint module.
+Match module.
 */
-module poet.inductive.fixpoint;
+module poet.inductive.match;
 
 import poet.context : Context;
+import poet.inductive.type : InductiveType;
 
 @safe:
 
 /**
-Fixpoint definition mode.
+match definition mode.
 */
-final class DefineFixpointMode
+final class DefineMatchMode
 {
     /**
     start definition by context and function type.
@@ -18,16 +19,21 @@ final class DefineFixpointMode
     Params:
         context = definition context
         type = function type
+        resultType = result type
     */
-    this(Context context, InductiveType type) pure scope
+    this(Context context, InductiveType type, Type resultType) pure scope
     in (context !is null)
     in (type !is null)
+    in (resultType !is null)
     {
         this.context_ = context;
         this.type_ = type;
+        this.resultType_ = resultType;
     }
 
 private:
     Context context_;
     InductiveType type_;
+    Type resultType_;
 }
+
