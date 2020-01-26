@@ -3,8 +3,16 @@ Match module.
 */
 module poet.inductive.match;
 
-import poet.context : Context;
-import poet.inductive.type : InductiveType;
+import poet.context : Context, next, ScopeID, Variable;
+import poet.fun :
+    DefineFunctionMode,
+    FunctionType,
+    FunctionValue,
+    funType,
+    ModeConflictException,
+    NotInstructionException;
+import poet.inductive.type : InductiveIndex, InductiveType;
+import poet.type : Type;
 
 @safe:
 
