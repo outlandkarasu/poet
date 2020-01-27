@@ -11,6 +11,7 @@ import std.typecons :
     Typedef;
 
 import poet.exception : PoetException;
+import poet.fun : FunctionValue;
 import poet.type : IType, Type;
 import poet.utils : List, list;
 import poet.value : IValue, Value;
@@ -87,7 +88,7 @@ final class Context
     */
     this() nothrow pure scope
     {
-        immutable rootScope = new Scope(ScopeID.init, null);
+        immutable rootScope = new Scope(ScopeID.init, null, null);
         this.values_ = list(ContextEntry(rootScope, VariableIndex.init, RootValue.instance));
     }
 
@@ -208,6 +209,15 @@ final class Context
             immutable vv2 = restored.pushScope(restored.lastScopeID.next, v2);
             assert(restored.get(vv2) is v2);
         }
+
+        /**
+        Returns:
+            current function value or null.
+        */
+        FunctionValue currentFunction() @nogc nothrow scope
+        {
+            return currentScope.currentFunction;
+        }
     }
 
     /**
@@ -223,17 +233,7 @@ final class Context
     Variable pushScope(ScopeID newScopeID, Value value) pure scope
     in (value !is null)
     {
-        enforce!InvalidScopeOrderException(scopeID < newScopeID);
-
-        immutable newScope = new Scope(newScopeID, values_);
-        this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
-
-        if (lastScopeID_ < newScopeID)
-        {
-            this.lastScopeID_ = newScopeID;
-        }
-
-        return lastVariable;
+        return pushScope(newScopeID, value, null);
     }
 
     ///
@@ -264,6 +264,44 @@ final class Context
         // push same scope ID.
         c.pushScope(c.scopeID.next, v);
         assert(c.lastScopeID == ScopeID(2));
+    }
+
+    /**
+    Push new function scope.
+
+    Params:
+        newScopeID = new scope ID
+        f = executing function
+        argument = pushing augument value
+    Returns:
+        pushed value variable.
+    Throws: InvalidScopeOrderException if new scope ID less than or equals last scope ID.
+    */
+    Variable pushFunctionScope(
+        ScopeID newScopeID,
+        FunctionValue f,
+        Value argument) pure scope
+    in (f !is null)
+    in (argument !is null)
+    {
+        return pushScope(newScopeID, argument, f);
+    }
+
+    ///
+    pure unittest
+    {
+        import poet.example : example;
+        import poet.fun : funType;
+        
+        immutable t = example();
+        immutable value = t.createValue();
+        immutable ftype = funType(t, t);
+
+        auto c = new Context();
+        immutable f = new FunctionValue(ftype, [], Variable.init, ScopeID(2), c.save);
+        auto v = c.pushFunctionScope(ScopeID(1), f, value);
+        assert(c.get(v) is value);
+        assert(c.currentFunction is f);
     }
 
     /**
@@ -424,9 +462,7 @@ final class Context
     {
         import poet.example : example;
 
-
         auto c = new Context();
-
         immutable v1 = example().createValue();
         immutable v2 = example().createValue();
         immutable v3 = example().createValue();
@@ -500,6 +536,25 @@ private:
         }
 
         return dg(entry.head.value);
+    }
+
+    Variable pushScope(
+        ScopeID newScopeID,
+        Value value,
+        FunctionValue currentFunction) pure scope
+    in (value !is null)
+    {
+        enforce!InvalidScopeOrderException(scopeID < newScopeID);
+
+        immutable newScope = new Scope(newScopeID, values_, currentFunction);
+        this.values_ = list(ContextEntry(newScope, VariableIndex.init, value));
+
+        if (lastScopeID_ < newScopeID)
+        {
+            this.lastScopeID_ = newScopeID;
+        }
+
+        return lastVariable;
     }
 }
 
@@ -603,14 +658,19 @@ struct ContextEntry
 
 final immutable class CScope
 {
-    this(ScopeID id, List!ContextEntry before) @nogc nothrow pure scope
+    this(
+        ScopeID id,
+        List!ContextEntry before,
+        FunctionValue currentFunction) @nogc nothrow pure scope
     {
         this.id = id;
         this.before = before;
+        this.currentFunction = currentFunction;
     }
 
     ScopeID id;
     List!ContextEntry before;
+    FunctionValue currentFunction;
 }
 
 alias Scope = immutable(CScope);
