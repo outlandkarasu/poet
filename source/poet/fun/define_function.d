@@ -57,9 +57,18 @@ final class DefineFunctionMode
         assert(c.lastScopeID == ScopeID(1));
         assert(c.scopeID == ScopeID(1));
 
-        immutable a = cast(ArgumentValue) c.get(Variable(ScopeID(1), VariableIndex.init));
+        immutable a = cast(ArgumentValue) c.get(c.lastVariable);
         assert(a.type.equals(ArgumentType.instance));
         assert(a.valueType.equals(t));
+    }
+
+    @property const @nogc nothrow pure scope
+    {
+        Type resultType()
+        out (r; r !is null)
+        {
+            return type_.result;
+        }
     }
 
     /**
@@ -360,6 +369,56 @@ class NotFunctionException : ContextException
     mixin basicExceptionCtors;
 }
 
+final immutable class CInstructionValue : IValue
+{
+    this(Type valueType, Instruction instruction) @nogc nothrow pure scope
+    in (valueType !is null)
+    in (instruction !is null)
+    {
+        this.valueType_ = valueType;
+        this.instruction_ = instruction;
+    }
+
+    @property @nogc nothrow pure scope
+    {
+        override Type type()
+        {
+            return InstructionType.instance;
+        }
+
+        Type valueType()
+        out (r; r !is null)
+        {
+            return valueType_;
+        }
+
+        Instruction instruction()
+        out (r; r !is null)
+        {
+            return instruction_;
+        }
+    }
+
+private:
+    Type valueType_;
+    Instruction instruction_;
+}
+
+///
+nothrow pure unittest
+{
+    import poet.example : example;
+    import poet.instruction : NoopInstruction;
+
+    immutable t = example();
+    immutable v = new InstructionValue(t, NoopInstruction.instance);
+    assert(v.type.equals(InstructionType.instance));
+    assert(v.valueType.equals(t));
+    assert(v.instruction is NoopInstruction.instance);
+}
+
+alias InstructionValue = immutable(CInstructionValue);
+
 private:
 
 final immutable class CArgumentType : IType
@@ -455,54 +514,4 @@ nothrow pure unittest
 }
 
 alias InstructionType = immutable(CInstructionType);
-
-final immutable class CInstructionValue : IValue
-{
-    this(Type valueType, Instruction instruction) @nogc nothrow pure scope
-    in (valueType !is null)
-    in (instruction !is null)
-    {
-        this.valueType_ = valueType;
-        this.instruction_ = instruction;
-    }
-
-    @property @nogc nothrow pure scope
-    {
-        override Type type()
-        {
-            return InstructionType.instance;
-        }
-
-        Type valueType()
-        out (r; r !is null)
-        {
-            return valueType_;
-        }
-
-        Instruction instruction()
-        out (r; r !is null)
-        {
-            return instruction_;
-        }
-    }
-
-private:
-    Type valueType_;
-    Instruction instruction_;
-}
-
-///
-nothrow pure unittest
-{
-    import poet.example : example;
-    import poet.instruction : NoopInstruction;
-
-    immutable t = example();
-    immutable v = new InstructionValue(t, NoopInstruction.instance);
-    assert(v.type.equals(InstructionType.instance));
-    assert(v.valueType.equals(t));
-    assert(v.instruction is NoopInstruction.instance);
-}
-
-alias InstructionValue = immutable(CInstructionValue);
 
