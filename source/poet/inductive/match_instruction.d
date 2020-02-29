@@ -45,13 +45,6 @@ private:
     Variable argument_;
     immutable(Variable)[] caseFunctions_;
 
-    /**
-    Constructor.
-
-    Params:
-        argument = match argument
-        caseFunctions = case function variables
-    */
     this(Variable argument, immutable(Variable)[] caseFunctions) nothrow pure
     {
         this.argument_ = argument;

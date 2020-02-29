@@ -594,6 +594,11 @@ class CannotPopScopeException : ContextException
     mixin basicExceptionCtors;
 }
 
+/**
+Unused root value.
+*/
+alias ROOT_VALUE = RootValue.instance;
+
 private:
 
 final immutable class CRootType : IType
