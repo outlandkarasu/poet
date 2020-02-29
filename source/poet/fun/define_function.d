@@ -64,10 +64,27 @@ final class DefineFunctionMode
 
     @property const @nogc nothrow pure scope
     {
+        FunctionType type()
+        out (r; r !is null)
+        {
+            return type_;
+        }
+
         Type resultType()
         out (r; r !is null)
         {
             return type_.result;
+        }
+
+        Type argumentType()
+        out (r; r !is null)
+        {
+            return type_.argument;
+        }
+
+        ScopeID scopeID()
+        {
+            return scopeID_;
         }
     }
 
@@ -270,8 +287,14 @@ final class DefineFunctionMode
         assert(result.execute(tv) is tv);
     }
 
-private:
+    /**
+    Get variable type in runtime.
 
+    Params:
+        v = target variable.
+    Returns:
+        variable type in runtime.
+    */
     Type getType()(auto scope ref const(Variable) v) pure scope
     out (r; r !is null)
     {
@@ -288,6 +311,8 @@ private:
 
         return value.type;
     }
+
+private:
 
     Context context_;
     FunctionType type_;

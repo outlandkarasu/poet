@@ -60,6 +60,27 @@ private:
 }
 
 /**
+get next variable.
+
+Params:
+    v = base variable.
+Returns:
+    next variable.
+*/
+Variable next(Variable v) @nogc nothrow pure
+{
+    return Variable(v.scopeID, VariableIndex(v.index + 1));
+}
+
+///
+@nogc nothrow pure unittest
+{
+    auto v = Variable(ScopeID(1), VariableIndex(1));
+    assert(v.next == Variable(ScopeID(1), VariableIndex(2)));
+    assert(v.next.next == Variable(ScopeID(1), VariableIndex(3)));
+}
+
+/**
 Context saved point.
 */
 struct SavePoint

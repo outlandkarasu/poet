@@ -20,6 +20,19 @@ Match instruction.
 */
 final immutable class CMatchInstruction : IInstruction
 {
+    /**
+    Constructor by argument variable and case functions.
+
+    Params:
+        argument = argument variable.
+        caseFunctions = match case functions.
+    */
+    this(Variable argument, immutable(Variable)[] caseFunctions) @nogc nothrow pure scope
+    {
+        this.argument_ = argument;
+        this.caseFunctions_ = caseFunctions;
+    }
+
     override void execute(scope Context context) pure scope
     in (false)
     {
@@ -44,12 +57,6 @@ final immutable class CMatchInstruction : IInstruction
 private:
     Variable argument_;
     immutable(Variable)[] caseFunctions_;
-
-    this(Variable argument, immutable(Variable)[] caseFunctions) nothrow pure
-    {
-        this.argument_ = argument;
-        this.caseFunctions_ = caseFunctions;
-    }
 }
 
 alias MatchInstruction = immutable(CMatchInstruction);
