@@ -56,12 +56,12 @@ final immutable class CFunctionValue : IValue
     Returns:
         function result.
     */
-    Value execute(Value argument) pure scope
+    Value execute(Value argument) pure
     out (r; r !is null && r.type.equals(type_.result))
     {
         enforce!UnmatchTypeException(argument.type.equals(type_.argument));
         scope c = new Context(startPoint_);
-        c.pushScope(scopeID_, argument);
+        c.pushFunctionScope(scopeID_, this, argument);
 
         foreach (i; instructions_)
         {
