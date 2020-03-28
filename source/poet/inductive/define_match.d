@@ -41,13 +41,15 @@ final class DefineMatchMode
     in (type !is null)
     in (resultType !is null)
     {
+        immutable matchType = funType(type, resultType);
+
         this.context_ = context;
-        this.mode_ = new DefineFunctionMode(context, funType(type, resultType));
+        this.mode_ = new DefineFunctionMode(context, matchType);
         this.caseMode_ = null;
         this.type_ = type;
         this.argument_ = context.lastVariable;
         this.caseTypes_ = type.constructors
-            .map!((c) => funType(type ~ c.argumentTypes ~ resultType)).array;
+            .map!((c) => funType(matchType ~ c.argumentTypes ~ resultType)).array;
     }
 
     ///
@@ -75,8 +77,8 @@ final class DefineMatchMode
     DefineFunctionMode defineCase() pure
     out (r; r !is null)
     {
-        enforce!CaseNotCompleteException(caseMode_ !is null);
-        enforce!CaseAlreadyDefinedException(caseIndex_ >= caseTypes_.length);
+        enforce!CaseNotCompleteException(caseMode_ is null);
+        enforce!CaseAlreadyDefinedException(caseIndex_ < caseTypes_.length);
 
         // create case function mode.
         caseMode_ = new DefineFunctionMode(context_, caseTypes_[caseIndex_]);
@@ -92,7 +94,7 @@ final class DefineMatchMode
     */
     void endCase()(auto scope ref const(Variable) result)
     {
-        enforce!CaseNotStartException(caseMode_ is null);
+        enforce!CaseNotStartedException(caseMode_ !is null);
 
         caseMode_.endAndPush(result);
         caseMode_ = null;
@@ -132,6 +134,60 @@ private:
     FunctionType[] caseTypes_;
 }
 
+///
+unittest
+{
+    import poet.context : Variable, VariableIndex;
+    import poet.fun : DefineFunctionMode;
+    import poet.example : example;
+    import poet.inductive : InductiveType, InductiveValue, SELF_TYPE, pushInductiveConstructor;
+
+    immutable t = new InductiveType([], [SELF_TYPE]);
+
+    auto c = new Context();
+    immutable constructors = c.pushInductiveConstructor(t);
+    auto df = new DefineMatchMode(c, t, t);
+    immutable matchFunctionType = funType(t, t);
+
+    // define zero case.
+    auto baseCase = df.defineCase();
+    assert(baseCase.argumentType.equals(matchFunctionType));
+    assert(baseCase.resultType.equals(t));
+    df.endCase(constructors[0]);
+
+    // define n + 1 case.
+    auto nCase = df.defineCase();
+      assert(nCase.argumentType.equals(matchFunctionType));
+      assert(nCase.resultType.equals(funType(t, t)));
+      auto df2 = new DefineFunctionMode(c, funType(t, t));
+      auto resultDf2 = df2.endAndPush(c.lastVariable);
+    df.endCase(resultDf2);
+
+    // end of definition.
+    immutable createInstruction = df.end();
+
+    // create match function.
+    createInstruction.instruction.execute(c);
+    immutable matchFunctionValue = cast(FunctionValue) c.get(c.lastVariable);
+    assert(matchFunctionValue.type.equals(matchFunctionType));
+
+    // call match function by zero.
+    immutable zeroValue = c.get(constructors[0]);
+    immutable resultByZero = matchFunctionValue.execute(zeroValue);
+    assert(resultByZero.type.equals(t));
+    assert(resultByZero is zeroValue);
+
+    // call match function by 3. 
+    immutable succValue = cast(FunctionValue) c.get(constructors[1]);
+    immutable threeValue = succValue.execute(succValue.execute(zeroValue));
+    immutable twoValue = cast(InductiveValue) matchFunctionValue.execute(threeValue);
+    assert(twoValue.index == 1);
+    assert(twoValue.values[0] is zeroValue);
+
+    immutable zeroByInduction = cast(InductiveValue) matchFunctionValue.execute(twoValue);
+    assert(zeroByInduction is zeroValue);
+}
+
 /**
 Case already defined.
 */
@@ -140,6 +196,16 @@ class CaseAlreadyDefinedException : ContextException
     ///
     mixin basicExceptionCtors;
 }
+
+/**
+Case not started.
+*/
+class CaseNotStartedException : ContextException
+{
+    ///
+    mixin basicExceptionCtors;
+}
+
 
 /**
 Case not complete.
