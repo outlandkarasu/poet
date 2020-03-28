@@ -25,7 +25,7 @@ Params:
 Returns:
     constructor variables.
 */
-Variable[] pushInductiveConstructor(Context context, InductiveType type) pure
+immutable(Variable)[] pushInductiveConstructor(Context context, InductiveType type) pure
 in (context !is null)
 in (type !is null)
 out (r; r.length == type.constructors.length)
@@ -33,7 +33,7 @@ out (r; r.length == type.constructors.length)
     return type.constructors
         .enumerate
         .map!((e) => pushInductiveConstructor(context, type, InductiveIndex(e.index)))
-        .array;
+        .array.idup;
 }
 
 ///
